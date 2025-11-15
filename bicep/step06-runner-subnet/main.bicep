@@ -23,8 +23,8 @@ param environmentName string
 @description('既存のVirtual Network名')
 param vnetName string
 
-@description('Container Instance SubnetのアドレスプレフィックS')
-param containerSubnetPrefix string = '10.0.5.0/24'
+@description('Container Instance Subnetのアドレスプレフィックス')
+param containerSubnetPrefix string = '10.0.6.0/24'
 
 @description('タグ')
 param tags object = {

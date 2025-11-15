@@ -151,11 +151,16 @@ git --version
 - **Private Endpoint Subnet**: 10.0.1.0/24
 - **App Integration Subnet**: 10.0.2.0/24
 - **Compute Subnet**: 10.0.3.0/24
+- **Gateway Subnet**: 10.0.4.0/24 (VPN Gateway用、オプション)
+- **DNS Resolver Subnet**: 10.0.5.0/28 (DNS Private Resolver用、オプション)
 
 新規追加:
-- **Container Instance Subnet**: 10.0.5.0/24 (新規作成)
+- **Container Instance Subnet**: 10.0.6.0/24 (新規作成)
 
-> **💡 ヒント**: 10.0.4.0/24は将来の拡張用に予約しておくことを推奨
+> **💡 ヒント**: 
+> - 10.0.4.0/24: VPN Gateway用（オプション）
+> - 10.0.5.0/28: DNS Private Resolver用（オプション）
+> - 10.0.7.0/24以降: 将来の拡張用に予約
 
 ### DNS設定
 

@@ -45,10 +45,12 @@ using './main.bicep'
 param location = 'japaneast'
 param environmentName = 'dev'
 param vnetName = 'vnet-internal-rag-dev'
-param containerSubnetPrefix = '10.0.5.0/24'
+param containerSubnetPrefix = '10.0.6.0/24'
 ```
 
 **重要**: `containerSubnetPrefix` が既存Subnetと重複しないことを確認してください。
+
+> **Note**: 10.0.5.0/28 は DNS Private Resolver 用に使用されているため、10.0.6.0/24 を使用します。
 
 ### 2. 既存Subnetの確認
 
@@ -68,9 +70,10 @@ Name                    AddressPrefix
 snet-private-endpoints  10.0.1.0/24
 snet-app-integration    10.0.2.0/24
 snet-compute            10.0.3.0/24
+snet-dns-resolver       10.0.5.0/28
 ```
 
-10.0.5.0/24が使用されていないことを確認してください。
+10.0.6.0/24が使用されていないことを確認してください（10.0.5.0/28はDNS Private Resolver用）。
 
 ### 3. デプロイの実行
 
@@ -196,7 +199,7 @@ az network vnet subnet show `
 ```
 
 **確認項目**:
-- `addressPrefix`: 10.0.5.0/24
+- `addressPrefix`: 10.0.6.0/24
 - `delegations[0].serviceName`: Microsoft.ContainerInstance/containerGroups
 - `serviceEndpoints[0].service`: Microsoft.KeyVault
 
@@ -230,7 +233,8 @@ Name                      AddressPrefix    PrivateEndpointNetworkPolicies    Del
 snet-private-endpoints    10.0.1.0/24      Disabled                          -
 snet-app-integration      10.0.2.0/24      Enabled                           Microsoft.Web/serverFarms
 snet-compute              10.0.3.0/24      Enabled                           -
-snet-container-instances  10.0.5.0/24      Enabled                           Microsoft.ContainerInstance/containerGroups
+snet-dns-resolver         10.0.5.0/28      Enabled                           Microsoft.Network/dnsResolvers
+snet-container-instances  10.0.6.0/24      Enabled                           Microsoft.ContainerInstance/containerGroups
 ```
 
 ## トラブルシューティング
@@ -242,7 +246,7 @@ snet-container-instances  10.0.5.0/24      Enabled                           Mic
 **対処法**:
 1. 既存Subnetのアドレス範囲を確認
 2. `parameters.bicepparam` の `containerSubnetPrefix` を変更
-3. 例: `10.0.6.0/24` に変更
+3. 例: `10.0.7.0/24` に変更（10.0.5.0/28はDNS Resolver、10.0.6.0/24はContainer Instance用）
 
 ### エラー: Subnet委任に失敗
 
