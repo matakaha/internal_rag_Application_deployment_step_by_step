@@ -110,15 +110,7 @@ az role assignment list --assignee <your-email> --output table
 
 #### Personal Access Token (PAT)
 
-Self-hosted Runnerの登録に必要:
-
-1. GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. "Generate new token (classic)" をクリック
-3. 以下のスコープを選択:
-   - `repo` (フルアクセス)
-   - `workflow`
-   - `admin:org` (Organizationの場合)
-4. トークンを生成してコピー（後で使用）
+Self-hosted Runnerの登録に必要です。作成手順は[事前準備タスク - GitHub PAT作成](#2-github-pat作成)を参照してください。
 
 > **⚠️ 重要**: トークンは生成後すぐにコピーしてください。再表示できません。
 
