@@ -66,12 +66,12 @@ az network vnet show `
   --query name
 ```
 
-### Step 06: Container Instance Subnet追加
+### Step 01: Container Instance Subnet追加
 
-**学習内容**: Self-hosted Runner用Subnet、NSG、Subnet委任
+**学習内容**: Self-hosted Runner用のSubnet、NSG設定
 
 ```powershell
-cd bicep/step06-runner-subnet
+cd bicep/step01-runner-subnet
 
 # パラメータファイルの確認・編集
 notepad parameters.bicepparam
@@ -92,11 +92,11 @@ az network vnet subnet show `
 
 **所要時間**: 約2-3分
 
-**詳細**: [Step 06 README](../bicep/step06-runner-subnet/README.md)
+**詳細**: [Step 01 README](../bicep/step01-runner-subnet/README.md)
 
 ---
 
-### Step 07: Key Vaultの構築
+### Step 02: Key Vaultの構築
 
 **学習内容**: Key Vault、Private Endpoint、アクセスポリシー、シークレット管理
 
@@ -110,7 +110,7 @@ echo "Your Object ID: $OBJECT_ID"
 
 #### 7-2. パラメータファイルの編集
 
-`bicep/step07-keyvault/parameters.bicepparam` を開いて、`adminObjectId` を設定:
+`bicep/step02-keyvault/parameters.bicepparam` を開いて、`adminObjectId` を設定:
 
 ```bicep
 param adminObjectId = '<YOUR_OBJECT_ID>'
@@ -119,7 +119,7 @@ param adminObjectId = '<YOUR_OBJECT_ID>'
 #### 7-3. デプロイ実行
 
 ```powershell
-cd ../step07-keyvault
+cd ../step02-keyvault
 
 # デプロイ
 az deployment group create `
@@ -183,11 +183,11 @@ az keyvault secret list `
 
 **所要時間**: 約5-7分
 
-**詳細**: [Step 07 README](../bicep/step07-keyvault/README.md)
+**詳細**: [Step 02 README](../bicep/step02-keyvault/README.md)
 
 ---
 
-### Step 08: GitHub Actions Workflowの構築
+### Step 03: GitHub Actions Workflowの構築
 
 **学習内容**: GitHub Actions、Self-hosted Runner、CI/CDパイプライン
 
@@ -208,7 +208,7 @@ cd <your-app-repo>
 mkdir -p .github/workflows
 
 # Workflowファイルをコピー
-# Step 08 READMEからworkflow例をコピーして配置
+# Step 03 READMEからworkflow例をコピーして配置
 notepad .github/workflows/deploy.yml
 ```
 
@@ -251,7 +251,7 @@ git push origin main
 
 **所要時間**: 約10-15分（初回デプロイ含む）
 
-**詳細**: [Step 08 README](../bicep/step08-github-actions/README.md)
+**詳細**: [Step 03 README](../bicep/step03-github-actions/README.md)
 
 ---
 

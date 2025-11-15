@@ -314,4 +314,4 @@ sequenceDiagram
 アーキテクチャを理解したら、実際にデプロイを開始しましょう:
 
 - [デプロイガイド](deployment-guide.md)
-- [Step 06: Container Instance Subnet追加](../bicep/step06-runner-subnet/README.md)
+- [Step 01: Container Instance Subnet追加](../bicep/step01-runner-subnet/README.md)

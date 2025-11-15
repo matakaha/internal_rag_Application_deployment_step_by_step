@@ -1,7 +1,7 @@
 using './main.bicep'
 
 // ============================================================================
-// Container Instance Subnetのパラメータファイル
+// Step 02: Key Vaultのパラメータファイル
 // ============================================================================
 
 // デプロイ先のリージョン
@@ -11,13 +11,14 @@ param location = 'japaneast'
 param environmentName = 'dev'
 
 // 既存のVirtual Network名
-// internal_rag_step_by_stepで作成した名前を指定
 param vnetName = 'vnet-internal-rag-dev'
 
-// Container Instance Subnetのアドレスプレフィックス
-// 既存のSubnetと重複しないように設定
-// Note: 10.0.5.0/28 はDNS Private Resolver用に使用されています
-param containerSubnetPrefix = '10.0.6.0/24'
+// Key Vault名 (グローバルで一意、3-24文字、英数字とハイフンのみ)
+param keyVaultName = 'kv-deploy-dev'
+
+// 現在のユーザーのオブジェクトID
+// 以下のコマンドで取得: az ad signed-in-user show --query id --output tsv
+param adminObjectId = '<YOUR_OBJECT_ID>'
 
 // タグ
 param tags = {

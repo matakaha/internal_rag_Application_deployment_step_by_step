@@ -1,4 +1,4 @@
-# Step 06: Container Instance Subnet追加
+# Step 01: Container Instance Subnetの構築
 
 このステップでは、Self-hosted GitHub Actions Runner用のSubnetを既存のVNetに追加します。
 
@@ -78,8 +78,8 @@ snet-dns-resolver       10.0.5.0/28
 ### 3. デプロイの実行
 
 ```powershell
-# Step 06ディレクトリに移動
-cd bicep/step06-runner-subnet
+# Step 01ディレクトリに移動
+cd bicep/step01-runner-subnet
 
 # デプロイ実行
 az deployment group create `
@@ -285,7 +285,7 @@ snet-container-instances  10.0.6.0/24      Enabled                           Mic
 
 Container Instance用Subnetが完成したら、次のステップに進みましょう:
 
-- [Step 07: Key Vaultの構築](../step07-keyvault/README.md)
+- [Step 02: Key Vaultの構築](../step02-keyvault/README.md)
 - [デプロイガイドに戻る](../../docs/deployment-guide.md)
 
 ## 参考リンク

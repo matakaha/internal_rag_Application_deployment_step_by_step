@@ -1,4 +1,4 @@
-# Step 07: Key Vaultの構築
+# Step 02: Key Vaultの構築
 
 このステップでは、デプロイ用認証情報を安全に管理するKey Vaultを構築します。
 
@@ -21,7 +21,7 @@
 
 ## 前提条件
 
-- Step 06が完了していること
+- Step 01が完了していること
 - 自分のオブジェクトIDを取得していること
 
 ### オブジェクトIDの取得
@@ -58,8 +58,8 @@ param adminObjectId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
 ### 2. デプロイの実行
 
 ```powershell
-# Step 07ディレクトリに移動
-cd bicep/step07-keyvault
+# Step 02ディレクトリに移動
+cd bicep/step02-keyvault
 
 # デプロイ実行
 az deployment group create `
@@ -220,7 +220,7 @@ accessPolicies: [
 
 #### Container Instance用権限（後で追加）
 
-Step 08でContainer InstanceのマネージドIDに対して、シークレット取得権限を付与します。
+Step 03でContainer InstanceのマネージドIDに対して、シークレット取得権限を付与します。
 
 ## セキュリティベストプラクティス
 
@@ -330,7 +330,7 @@ az network vnet subnet show `
 
 Key Vaultが完成したら、次のステップに進みましょう:
 
-- [Step 08: GitHub Actions Workflowの構築](../step08-github-actions/README.md)
+- [Step 03: GitHub Actions Workflowの構築](../step03-github-actions/README.md)
 - [デプロイガイドに戻る](../../docs/deployment-guide.md)
 
 ## 参考リンク

@@ -1,4 +1,4 @@
-# Step 08: GitHub Actions Workflow
+# Step 03: GitHub Actionsワークフローの構築
 
 このステップでは、GitHub Actionsを使って閉域Web AppsへCI/CDデプロイするワークフローを構築します。
 
@@ -21,7 +21,7 @@
 
 ## 前提条件
 
-- Step 06, 07が完了していること
+- Step 01, 02が完了していること
 - GitHubリポジトリが作成済み
 - GitHub Personal Access Token (PAT)が準備済み
 
@@ -61,7 +61,7 @@ your-app-repo/
 
 | Secret名 | 内容 | 取得方法 |
 |---------|------|---------|
-| `AZURE_CREDENTIALS` | サービスプリンシパル情報 | Step 07で格納したKey Vaultから |
+| `AZURE_CREDENTIALS` | サービスプリンシパル情報 | Step 02で格納したKey Vaultから |
 | `KEY_VAULT_NAME` | Key Vault名 | `kv-deploy-<環境名>` |
 | `GITHUB_PAT` | Personal Access Token | GitHub Settings |
 

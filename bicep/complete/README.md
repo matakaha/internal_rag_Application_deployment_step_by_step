@@ -4,7 +4,7 @@
 
 ## 概要
 
-Step 06-07を個別にデプロイする代わりに、このディレクトリの`main.bicep`を使用することで、すべてのリソースを一度にデプロイできます。
+Step 01-02を個別にデプロイする代わりに、このディレクトリの`main.bicep`を使用することで、すべてのリソースを一度にデプロイできます。
 
 ## 作成されるリソース
 
@@ -117,7 +117,7 @@ Bicepモジュールが自動的に依存関係を解決し、正しい順序で
 
 ## ステップ版との比較
 
-| 項目 | ステップ版 (Step 06-07) | 統合版 (complete) |
+| 項目 | ステップ版 (Step 01-02) | 統合版 (complete) |
 |------|------------------------|-------------------|
 | **用途** | 学習・段階的な理解 | 本番環境・効率重視 |
 | **デプロイ時間** | 約15-20分 | 約10-15分 |
@@ -180,7 +180,7 @@ Bicepモジュールが自動的に依存関係を解決し、正しい順序で
 デプロイが完了したら:
 
 1. **GitHub Actionsシークレットの設定**
-   - [Step 08のドキュメント](../step08-github-actions/README.md)を参照
+   - [Step 03のドキュメント](../step03-github-actions/README.md)を参照
    - Key VaultにAzure認証情報を保存
 
 2. **Self-hosted Runnerの準備**
@@ -217,9 +217,9 @@ az network private-endpoint delete `
 
 ## 参考資料
 
-- [Step 06: Runner Subnetの構築](../step06-runner-subnet/README.md)
-- [Step 07: Key Vaultの構築](../step07-keyvault/README.md)
-- [Step 08: GitHub Actionsワークフロー](../step08-github-actions/README.md)
+- [Step 01: Runner Subnetの構築](../step01-runner-subnet/README.md)
+- [Step 02: Key Vaultの構築](../step02-keyvault/README.md)
+- [Step 03: GitHub Actionsワークフロー](../step03-github-actions/README.md)
 - [Azure Container Instances](https://learn.microsoft.com/azure/container-instances/)
 - [Azure Key Vault](https://learn.microsoft.com/azure/key-vault/)
 - [GitHub Actions Self-hosted Runners](https://docs.github.com/actions/hosting-your-own-runners)

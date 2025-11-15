@@ -70,8 +70,8 @@ cd internal_rag_Application_deployment_step_by_step
 $RESOURCE_GROUP = "rg-internal-rag-dev"
 $LOCATION = "japaneast"
 
-# 3. Step 06から順番にデプロイ
-cd bicep/step06-runner-subnet
+# 3. Step 01から順番にデプロイ
+cd bicep/step01-runner-subnet
 az deployment group create `
   --resource-group $RESOURCE_GROUP `
   --template-file main.bicep `
@@ -82,18 +82,18 @@ az deployment group create `
 
 ## 📖 学習ステップ
 
-### Step 06: Self-hosted Runner用Subnet追加 [→](bicep/step06-runner-subnet/)
+### Step 01: Self-hosted Runner用Subnet追加 [→](bicep/step01-runner-subnet/)
 - Container Instance用サブネット追加
 - NSG設定
 - 既存vNetへの統合
 
-### Step 07: Key Vault構築 [→](bicep/step07-keyvault/)
+### Step 02: Key Vault構築 [→](bicep/step02-keyvault/)
 - Key Vaultの作成
 - Private Endpoint設定
 - アクセスポリシー設定
 - デプロイ用認証情報の格納
 
-### Step 08: GitHub Actions Workflow [→](bicep/step08-github-actions/)
+### Step 03: GitHub Actions Workflow [→](bicep/step03-github-actions/)
 - Self-hosted Runnerのセットアップ
 - Container Instanceの動的起動
 - Key Vaultからのシークレット取得

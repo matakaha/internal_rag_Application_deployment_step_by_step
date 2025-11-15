@@ -278,7 +278,7 @@ az ad sp create-for-rbac `
 }
 ```
 
-> **⚠️ 重要**: このJSONは安全に保管してください。Step 07でKey Vaultに格納します。
+> **⚠️ 重要**: このJSONは安全に保管してください。Step 02でKey Vaultに格納します。
 
 ## トラブルシューティング
 
