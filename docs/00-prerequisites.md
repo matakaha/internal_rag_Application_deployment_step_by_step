@@ -274,51 +274,90 @@ az network private-dns zone list --resource-group $RESOURCE_GROUP --query "[].na
 
 ### 3. Azure サービスプリンシパル作成
 
-Web Appsデプロイ用のサービスプリンシパルを作成:
+Web Appsデプロイ用のサービスプリンシパルを作成します。
+
+#### 方法1: Azure CLI（推奨）
 
 ```powershell
 # サービスプリンシパル作成
 $SP_NAME = "sp-github-actions-$ENV_NAME"
 $SUBSCRIPTION_ID = (az account show --query id --output tsv)
 
-$SP_OUTPUT = az ad sp create-for-rbac `
+az ad sp create-for-rbac `
   --name $SP_NAME `
   --role contributor `
-  --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP `
-  --query "{clientId:appId, clientSecret:password, tenantId:tenant}" `
-  --output json
+  --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP
 
-# 出力を表示
-$SP_OUTPUT | ConvertFrom-Json | ConvertTo-Json -Depth 10
-
-# 各値を変数に格納（後でKey Vaultに格納）
-$SP_JSON = $SP_OUTPUT | ConvertFrom-Json
-$CLIENT_ID = $SP_JSON.clientId
-$CLIENT_SECRET = $SP_JSON.clientSecret
-$TENANT_ID = $SP_JSON.tenantId
-
-Write-Host "`n=== サービスプリンシパル情報 ===" -ForegroundColor Green
-Write-Host "Client ID: $CLIENT_ID"
-Write-Host "Tenant ID: $TENANT_ID"
-Write-Host "Subscription ID: $SUBSCRIPTION_ID"
-Write-Host "Client Secret: [HIDDEN - 安全に保管してください]"
+# 出力されたJSON（appId, password, tenant）をメモしておく
 ```
 
 **出力例**:
 ```json
 {
-  "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "clientSecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  "appId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "displayName": "sp-github-actions-dev",
+  "password": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "tenant": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
 
+#### 方法2: Azureポータル
+
+**ステップ1: アプリケーション登録**
+
+1. [Azure Portal](https://portal.azure.com) にアクセス
+2. **Microsoft Entra ID**（旧Azure Active Directory）を開く
+3. 左メニューから **アプリの登録** を選択
+4. **新規登録** をクリック
+5. 以下を入力:
+   - **名前**: `sp-github-actions-dev`（環境に応じて変更）
+   - **サポートされているアカウントの種類**: 「この組織ディレクトリのみに含まれるアカウント」
+   - **リダイレクトURI**: 空欄のまま
+6. **登録** をクリック
+
+**ステップ2: クライアントシークレットの作成**
+
+1. 作成したアプリの **概要** ページで以下をメモ:
+   - **アプリケーション (クライアント) ID** → `appId`
+   - **ディレクトリ (テナント) ID** → `tenant`
+2. 左メニューから **証明書とシークレット** を選択
+3. **クライアント シークレット** タブで **新しいクライアント シークレット** をクリック
+4. 以下を入力:
+   - **説明**: `GitHub Actions deployment secret`
+   - **有効期限**: 組織のポリシーに応じて選択（例: 180日、1年、2年）
+5. **追加** をクリック
+6. **値** 列に表示されたシークレットをすぐにコピー（`password`）
+
+> **⚠️ 重要**: クライアントシークレットの値は、この画面を離れると二度と表示されません。必ずコピーしてください。
+
+**ステップ3: ロールの割り当て**
+
+1. Azureポータルで対象の **リソースグループ** を開く（例: `rg-internal-rag-dev`）
+2. 左メニューから **アクセス制御 (IAM)** を選択
+3. **追加** → **ロールの割り当ての追加** をクリック
+4. **ロール** タブで **共同作成者** を選択し、**次へ**
+5. **メンバー** タブで:
+   - **アクセスの割り当て先**: 「ユーザー、グループ、またはサービス プリンシパル」
+   - **選択** をクリックして、先ほど作成した `sp-github-actions-dev` を検索・選択
+6. **レビューと割り当て** をクリック
+
+**ステップ4: 必要な情報の確認**
+
+以下の情報を取得できました:
+- **Application (client) ID** (appId): Microsoft Entra IDのアプリ概要ページ
+- **Client Secret** (password): 証明書とシークレットで生成した値
+- **Directory (tenant) ID** (tenant): Microsoft Entra IDのアプリ概要ページ
+- **Subscription ID**: サブスクリプション概要ページまたは以下のコマンドで取得
+  ```powershell
+  az account show --query id --output tsv
+  ```
+
+#### 取得した情報の保管
+
 > **⚠️ 重要**: 
-> - `clientId`、`clientSecret`、`tenantId`、`subscriptionId`の4つの値を安全に保管してください
-> - `clientSecret`は一度しか表示されません。必ずコピーしてください
-> - Step 02でこれらの値をKey Vaultに格納します
->
-> **📝 注意**: `--sdk-auth`オプションは非推奨となり、将来のバージョンで削除されます
+> - 出力された`appId`（Client ID）、`password`（Client Secret）、`tenant`（Tenant ID）、`subscriptionId`を安全に保管してください
+> - `password`は一度しか表示されません。必ずコピーしてください
+> - Step 02でこれらの4つの値をKey Vaultに格納します
 
 ## トラブルシューティング
 
