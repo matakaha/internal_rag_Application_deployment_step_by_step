@@ -62,7 +62,7 @@ your-app-repo/
 | Secret名 | 内容 | 取得方法 |
 |---------|------|---------|
 | `AZURE_CREDENTIALS` | サービスプリンシパル情報 | Step 02で格納したKey Vaultから |
-| `KEY_VAULT_NAME` | Key Vault名 | `kv-deploy-<環境名>` |
+| `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
 | `GITHUB_PAT` | Personal Access Token | GitHub Settings |
 
 #### Secretsの設定方法
@@ -70,7 +70,8 @@ your-app-repo/
 ```bash
 # GitHub CLIを使用
 gh secret set AZURE_CREDENTIALS < azure-credentials.json
-gh secret set KEY_VAULT_NAME -b "kv-deploy-dev"
+# Key Vault名
+gh secret set KEY_VAULT_NAME -b "kv-gh-runner-dev"
 gh secret set GITHUB_PAT -b "<your-pat>"
 ```
 

@@ -100,6 +100,14 @@ az network vnet subnet show `
 
 **学習内容**: Key Vault、Private Endpoint、アクセスポリシー、シークレット管理
 
+> ⚠️ **重要: VPN接続時のDNS設定について**
+> 
+> Key VaultはPrivate Endpoint経由でのみアクセス可能です。VPN接続からローカルPCで操作する場合、**DNS Private Resolverの設定**が必須です。
+> 
+> 📚 **[VPN接続セットアップガイド](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md)** の **Step 8**（DNS Private Resolver作成）および **Step 9**（VPN クライアント構成ファイルのDNS設定）を完了してください。
+> 
+> **DNS設定が未完了の場合**は、[Step 02 README](../bicep/step02-keyvault/README.md#重要-vpn接続時のdns設定について) の「DNS設定が未完了の場合の対処法」を参照してください。
+
 #### 7-1. オブジェクトIDの取得
 
 ```powershell
@@ -129,14 +137,14 @@ az deployment group create `
 
 # デプロイ結果の確認
 az keyvault show `
-  --name "kv-deploy-$ENV_NAME" `
+  --name "kv-gh-runner-$ENV_NAME" `
   --query "{Name:name, VaultUri:properties.vaultUri, PublicNetworkAccess:properties.publicNetworkAccess}"
 ```
 
 #### 7-4. シークレットの設定
 
 ```powershell
-$KEY_VAULT_NAME = "kv-deploy-$ENV_NAME"
+$KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
 
 # サービスプリンシパル情報を格納
 az keyvault secret set `
@@ -227,7 +235,8 @@ notepad .github/workflows/deploy.yml
 
 # GitHub Secretsに設定
 gh secret set AZURE_CREDENTIALS < azure-credentials.json
-gh secret set KEY_VAULT_NAME -b "kv-deploy-$ENV_NAME"
+# Key Vault名を登録
+gh secret set KEY_VAULT_NAME -b "kv-gh-runner-$ENV_NAME"
 gh secret set GITHUB_PAT -b "<your-github-pat>"
 
 # ファイル削除（セキュリティ）
@@ -271,7 +280,7 @@ az network vnet subnet show `
   --name snet-container-instances
 
 # Key Vaultの確認
-az keyvault show --name "kv-deploy-$ENV_NAME"
+az keyvault show --name "kv-gh-runner-$ENV_NAME"
 
 # GitHub Actionsワークフロー実行履歴の確認
 gh run list --repo <org>/<repo-name>
@@ -339,7 +348,7 @@ az monitor diagnostic-settings create `
 ```powershell
 # 診断設定を有効化
 az monitor diagnostic-settings create `
-  --resource $(az keyvault show --name kv-deploy-$ENV_NAME --query id --output tsv) `
+  --resource $(az keyvault show --name kv-gh-runner-$ENV_NAME --query id --output tsv) `
   --name keyvault-diagnostics `
   --workspace <log-analytics-workspace-id> `
   --logs '[{"category": "AuditEvent", "enabled": true}]'
@@ -365,10 +374,10 @@ az container delete `
   --yes
 
 # Key Vault削除（ソフト削除有効）
-az keyvault delete --name "kv-deploy-$ENV_NAME"
+az keyvault delete --name "kv-gh-runner-$ENV_NAME"
 
 # Key Vault完全削除（purge）
-az keyvault purge --name "kv-deploy-$ENV_NAME"
+az keyvault purge --name "kv-gh-runner-$ENV_NAME"
 
 # Subnet削除（他リソースが依存している場合は削除不可）
 az network vnet subnet delete `

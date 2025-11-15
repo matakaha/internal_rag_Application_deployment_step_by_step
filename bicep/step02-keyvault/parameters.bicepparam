@@ -14,7 +14,7 @@ param environmentName = 'dev'
 param vnetName = 'vnet-internal-rag-dev'
 
 // Key Vault名 (グローバルで一意、3-24文字、英数字とハイフンのみ)
-param keyVaultName = 'kv-deploy-dev'
+param keyVaultName = 'kv-gh-runner-dev'
 
 // 現在のユーザーのオブジェクトID
 // 以下のコマンドで取得: az ad signed-in-user show --query id --output tsv

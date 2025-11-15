@@ -47,7 +47,7 @@ using './main.bicep'
 param location = 'japaneast'
 param environmentName = 'dev'
 param vnetName = 'vnet-internal-rag-dev'
-param keyVaultName = 'kv-deploy-dev'
+param keyVaultName = 'kv-gh-runner-dev'
 
 // ここに自分のオブジェクトIDを設定
 param adminObjectId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
@@ -75,7 +75,7 @@ az deployment group create `
 ```powershell
 # Key Vault確認
 az keyvault show `
-  --name kv-deploy-$ENV_NAME `
+  --name kv-gh-runner-$ENV_NAME `
   --query "{Name:name, PublicNetworkAccess:properties.publicNetworkAccess, VaultUri:properties.vaultUri}"
 
 # Private Endpoint確認
@@ -87,13 +87,68 @@ az network private-endpoint show `
 
 ## シークレットの設定
 
+### 重要: VPN接続時のDNS設定について
+
+Key VaultはPrivate Endpoint経由でのみアクセス可能です。VPN接続している場合でも、ローカルPCから直接アクセスするには **DNS Private Resolver** の設定が必要です。
+
+#### VPN接続でKey Vaultにアクセスする場合
+
+VPN接続時に適切なDNS設定を行うには、以下のドキュメントを参照してください:
+
+📚 **[VPN接続セットアップガイド - Step 8 & Step 9](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md#step-8-azure-dns-private-resolver-%E3%81%AE%E4%BD%9C%E6%88%90)**
+
+特に重要なステップ:
+- **Step 8**: Azure DNS Private Resolver の作成（10.0.5.4）
+- **Step 9**: VPN クライアント構成ファイル（azurevpnconfig.xml）への DNS 設定追加
+
+これらの設定により、Private Endpoint の名前解決が正しく機能するようになります。
+
+#### DNS設定が未完了の場合の対処法
+
+VPN接続時のDNS設定が完了していない場合は、以下のいずれかの方法でシークレットを設定してください:
+
+**方法1: 一時的にパブリックアクセスを許可（作業後は必ず無効化）**
+```powershell
+# 現在のパブリックIPを取得
+$MY_IP = (Invoke-WebRequest -Uri "https://api.ipify.org").Content
+
+# Key Vaultにファイアウォールルールを追加
+az keyvault network-rule add `
+  --resource-group $RESOURCE_GROUP `
+  --name $KEY_VAULT_NAME `
+  --ip-address "$MY_IP/32"
+
+# パブリックアクセスを一時的に有効化
+az keyvault update `
+  --resource-group $RESOURCE_GROUP `
+  --name $KEY_VAULT_NAME `
+  --public-network-access Enabled
+
+# シークレット設定後、必ずパブリックアクセスを無効化
+az keyvault update `
+  --resource-group $RESOURCE_GROUP `
+  --name $KEY_VAULT_NAME `
+  --public-network-access Disabled
+
+az keyvault network-rule remove `
+  --resource-group $RESOURCE_GROUP `
+  --name $KEY_VAULT_NAME `
+  --ip-address "$MY_IP/32"
+```
+
+**方法2: Azure Cloud Shell を使用**
+```powershell
+# Azure Portal → Cloud Shell (PowerShell) から実行
+# vNet内のリソースにアクセス可能
+```
+
 ### 1. サービスプリンシパル情報の格納
 
 前提条件で作成したサービスプリンシパルの情報をKey Vaultに格納します。
 
 ```powershell
 # Key Vault名
-$KEY_VAULT_NAME = "kv-deploy-$ENV_NAME"
+$KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
 
 # サービスプリンシパル情報を格納
 # (前提条件で取得したJSONから各値を設定)
@@ -282,7 +337,7 @@ az monitor diagnostic-settings create `
 **対処法**:
 ```powershell
 # 別の名前を試す
-param keyVaultName = 'kv-deploy-dev-<ランダム文字列>'
+param keyVaultName = 'kv-gh-runner-dev-<ランダム文字列>'
 ```
 
 ### エラー: アクセス権限がない

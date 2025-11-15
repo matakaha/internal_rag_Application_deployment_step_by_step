@@ -95,7 +95,7 @@ az role assignment list --assignee <your-email> --output table
 #### GitHubアカウント
 
 - GitHubアカウントが必要
-- Organization推奨（個人アカウントでも可）
+- Organization推奨(個人アカウントでも可)
 
 #### GitHubリポジトリ
 
@@ -122,7 +122,43 @@ Self-hosted Runnerの登録に必要:
 
 > **⚠️ 重要**: トークンは生成後すぐにコピーしてください。再表示できません。
 
-### 4. ローカル開発環境
+### 4. VPN接続とDNS設定
+
+**Private Endpoint経由でKey VaultやWeb Appsにアクセスする場合、VPN接続とDNS設定が必須です。**
+
+#### 必須設定
+
+以下のガイドに従って、VPN接続環境を構築してください:
+
+📚 **[VPN接続セットアップガイド](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md)**
+
+特に重要なステップ:
+- **Step 8**: Azure DNS Private Resolver の作成（10.0.5.4）
+- **Step 9**: VPN クライアント構成ファイル（azurevpnconfig.xml）への DNS 設定追加
+
+#### DNS設定確認コマンド
+
+VPN接続後、DNS設定が正しく機能しているか確認:
+
+```powershell
+# NRPT (Name Resolution Policy Table) の確認
+Get-DnsClientNrptPolicy | Format-Table -AutoSize
+
+# DNS解決テスト（Key Vault用）
+Resolve-DnsName "kv-gh-runner-$ENV_NAME.vault.azure.net"
+
+# 期待される結果: 10.0.1.x のプライベートIPアドレスが返される
+```
+
+#### VPN設定が未完了の場合
+
+VPN設定が完了していない場合は、以下の方法でリソースにアクセスできます:
+- **Azure Cloud Shell**: Portal上のCloud Shellから操作
+- **一時的なパブリックアクセス**: セキュリティリスクがあるため非推奨
+
+詳細は[デプロイガイド - Step 02](deployment-guide.md#step-02-key-vaultの構築)を参照してください。
+
+### 5. ローカル開発環境
 
 #### PowerShell
 

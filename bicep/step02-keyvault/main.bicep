@@ -26,7 +26,7 @@ param vnetName string
 @description('Key Vault名 (グローバルで一意、3-24文字)')
 @minLength(3)
 @maxLength(24)
-param keyVaultName string = 'kv-deploy-${environmentName}'
+param keyVaultName string = 'kv-gh-runner-${environmentName}'
 
 @description('現在のユーザーのオブジェクトID（初期管理者用）')
 param adminObjectId string

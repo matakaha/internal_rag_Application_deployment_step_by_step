@@ -1,0 +1,572 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "11744665067651226632"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "デプロイ先のリージョン"
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 10,
+      "metadata": {
+        "description": "環境名 (例: dev, stg, prod)"
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Virtual Network名 (既存のVNetを指定)"
+      }
+    },
+    "containerSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.6.0/24",
+      "metadata": {
+        "description": "Container Instance Subnetのアドレスプレフィックス"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[format('kv-gh-runner-{0}', parameters('environmentName'))]",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Key Vault名"
+      }
+    },
+    "adminObjectId": {
+      "type": "string",
+      "metadata": {
+        "description": "現在のユーザーのオブジェクトID（初期管理者用）"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "Environment": "[parameters('environmentName')]",
+        "Project": "GitHub Actions Deployment",
+        "ManagedBy": "Bicep"
+      },
+      "metadata": {
+        "description": "タグ"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-runner-subnet",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "vnetName": {
+            "value": "[parameters('vnetName')]"
+          },
+          "containerSubnetPrefix": {
+            "value": "[parameters('containerSubnetPrefix')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.33.27573",
+              "templateHash": "1000416883254003518"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "デプロイ先のリージョン"
+              }
+            },
+            "environmentName": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 10,
+              "metadata": {
+                "description": "環境名 (例: dev, stg, prod)"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "既存のVirtual Network名"
+              }
+            },
+            "containerSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.6.0/24",
+              "metadata": {
+                "description": "Container Instance Subnetのアドレスプレフィックス"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {
+                "Environment": "[parameters('environmentName')]",
+                "Project": "Internal RAG Deployment",
+                "ManagedBy": "Bicep"
+              },
+              "metadata": {
+                "description": "タグ"
+              }
+            }
+          },
+          "variables": {
+            "nsgContainerName": "[format('nsg-container-instances-{0}', parameters('environmentName'))]",
+            "containerSubnetName": "snet-container-instances"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[variables('nsgContainerName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowVnetInbound",
+                    "properties": {
+                      "description": "VNet内からの通信を許可",
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRange": "*"
+                    }
+                  },
+                  {
+                    "name": "AllowHttpsOutbound",
+                    "properties": {
+                      "description": "HTTPS通信を許可（GitHub, Azure API等）",
+                      "priority": 100,
+                      "direction": "Outbound",
+                      "access": "Allow",
+                      "protocol": "Tcp",
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "Internet",
+                      "destinationPortRange": "443"
+                    }
+                  },
+                  {
+                    "name": "AllowVnetOutbound",
+                    "properties": {
+                      "description": "VNet内への通信を許可",
+                      "priority": 110,
+                      "direction": "Outbound",
+                      "access": "Allow",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', parameters('vnetName'), variables('containerSubnetName'))]",
+              "properties": {
+                "addressPrefix": "[parameters('containerSubnetPrefix')]",
+                "delegations": [
+                  {
+                    "name": "delegation",
+                    "properties": {
+                      "serviceName": "Microsoft.ContainerInstance/containerGroups"
+                    }
+                  }
+                ],
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgContainerName'))]"
+                },
+                "serviceEndpoints": [
+                  {
+                    "service": "Microsoft.KeyVault",
+                    "locations": [
+                      "[parameters('location')]"
+                    ]
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgContainerName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "containerSubnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Instance SubnetのリソースID"
+              },
+              "value": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), variables('containerSubnetName'))]"
+            },
+            "containerSubnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Instance Subnet名"
+              },
+              "value": "[variables('containerSubnetName')]"
+            },
+            "nsgId": {
+              "type": "string",
+              "metadata": {
+                "description": "NSGのリソースID"
+              },
+              "value": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgContainerName'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-keyvault",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
+          },
+          "vnetName": {
+            "value": "[parameters('vnetName')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "adminObjectId": {
+            "value": "[parameters('adminObjectId')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.33.27573",
+              "templateHash": "7558071857951347732"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "デプロイ先のリージョン"
+              }
+            },
+            "environmentName": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 10,
+              "metadata": {
+                "description": "環境名"
+              }
+            },
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "既存のVirtual Network名"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "defaultValue": "[format('kv-gh-runner-{0}', parameters('environmentName'))]",
+              "minLength": 3,
+              "maxLength": 24,
+              "metadata": {
+                "description": "Key Vault名 (グローバルで一意、3-24文字)"
+              }
+            },
+            "adminObjectId": {
+              "type": "string",
+              "metadata": {
+                "description": "現在のユーザーのオブジェクトID（初期管理者用）"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {
+                "Environment": "[parameters('environmentName')]",
+                "Project": "Internal RAG Deployment",
+                "ManagedBy": "Bicep"
+              },
+              "metadata": {
+                "description": "タグ"
+              }
+            }
+          },
+          "variables": {
+            "privateEndpointName": "[format('pe-keyvault-{0}', parameters('environmentName'))]",
+            "privateDnsZoneName": "privatelink.vaultcore.azure.net"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "[variables('privateDnsZoneName')]",
+              "location": "global",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', variables('privateDnsZoneName'), format('{0}-link', parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "[subscription().tenantId]",
+                "enableRbacAuthorization": false,
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": true,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 90,
+                "enablePurgeProtection": true,
+                "publicNetworkAccess": "Disabled",
+                "networkAcls": {
+                  "defaultAction": "Deny",
+                  "bypass": "AzureServices",
+                  "ipRules": [],
+                  "virtualNetworkRules": []
+                },
+                "accessPolicies": [
+                  {
+                    "tenantId": "[subscription().tenantId]",
+                    "objectId": "[parameters('adminObjectId')]",
+                    "permissions": {
+                      "keys": [
+                        "get",
+                        "list",
+                        "create",
+                        "update",
+                        "delete"
+                      ],
+                      "secrets": [
+                        "get",
+                        "list",
+                        "set",
+                        "delete"
+                      ],
+                      "certificates": [
+                        "get",
+                        "list",
+                        "create",
+                        "update",
+                        "delete"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-11-01",
+              "name": "[variables('privateEndpointName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), 'snet-private-endpoints')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[variables('privateEndpointName')]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                      "groupIds": [
+                        "vault"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2023-11-01",
+              "name": "[format('{0}/{1}', variables('privateEndpointName'), 'default')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "config1",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneName'))]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneName'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "keyVaultId": {
+              "type": "string",
+              "metadata": {
+                "description": "Key VaultのリソースID"
+              },
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault名"
+              },
+              "value": "[parameters('keyVaultName')]"
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI"
+              },
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+            },
+            "privateEndpointId": {
+              "type": "string",
+              "metadata": {
+                "description": "Private EndpointのリソースID"
+              },
+              "value": "[resourceId('Microsoft.Network/privateEndpoints', variables('privateEndpointName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'deploy-runner-subnet')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "containerSubnetId": {
+      "type": "string",
+      "metadata": {
+        "description": "Container Instance SubnetのリソースID"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-runner-subnet'), '2025-04-01').outputs.containerSubnetId.value]"
+    },
+    "containerSubnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Container Instance Subnet名"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-runner-subnet'), '2025-04-01').outputs.containerSubnetName.value]"
+    },
+    "nsgId": {
+      "type": "string",
+      "metadata": {
+        "description": "NSGのリソースID"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-runner-subnet'), '2025-04-01').outputs.nsgId.value]"
+    },
+    "keyVaultId": {
+      "type": "string",
+      "metadata": {
+        "description": "Key VaultのリソースID"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-keyvault'), '2025-04-01').outputs.keyVaultId.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault名"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-keyvault'), '2025-04-01').outputs.keyVaultName.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "metadata": {
+        "description": "Key Vault URI"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-keyvault'), '2025-04-01').outputs.keyVaultUri.value]"
+    },
+    "keyVaultPrivateEndpointId": {
+      "type": "string",
+      "metadata": {
+        "description": "Private EndpointのリソースID"
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'deploy-keyvault'), '2025-04-01').outputs.privateEndpointId.value]"
+    },
+    "deploymentMessage": {
+      "type": "string",
+      "metadata": {
+        "description": "デプロイ完了メッセージ"
+      },
+      "value": "GitHub Actions デプロイ環境のセットアップが完了しました。次はGitHub Actionsワークフローを設定してください。"
+    }
+  }
+}
