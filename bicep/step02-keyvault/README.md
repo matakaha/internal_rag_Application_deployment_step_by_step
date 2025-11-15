@@ -144,34 +144,38 @@ az keyvault network-rule remove `
 
 ### 1. サービスプリンシパル情報の格納
 
-前提条件で作成したサービスプリンシパルの情報をKey Vaultに格納します。
+[前提条件 - Azure サービスプリンシパル作成](../../docs/00-prerequisites.md#3-azure-サービスプリンシパル作成)で作成したサービスプリンシパルの情報をKey Vaultに格納します。
 
 ```powershell
 # Key Vault名
 $KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
 
 # サービスプリンシパル情報を格納
-# (前提条件で取得したJSONから各値を設定)
+# (前提条件「3. Azure サービスプリンシパル作成」で取得した$CLIENT_ID, $CLIENT_SECRET, $TENANT_ID, $SUBSCRIPTION_IDを使用)
 
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-CLIENT-ID" `
-  --value "<your-client-id>"
+  --value $CLIENT_ID
 
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-CLIENT-SECRET" `
-  --value "<your-client-secret>"
+  --value $CLIENT_SECRET
 
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-TENANT-ID" `
-  --value "<your-tenant-id>"
+  --value $TENANT_ID
 
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-SUBSCRIPTION-ID" `
-  --value "<your-subscription-id>"
+  --value $SUBSCRIPTION_ID
+```
+
+> **💡 ヒント**: 前提条件のコマンドで変数に格納済みの場合は、上記のように変数を使用できます。
+> 手動で値を設定する場合は、`--value "<your-value>"`の形式で指定してください。
 ```
 
 ### 2. Web Apps publish profileの格納（オプション）

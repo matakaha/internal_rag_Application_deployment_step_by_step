@@ -147,25 +147,26 @@ az keyvault show `
 $KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
 
 # サービスプリンシパル情報を格納
+# (前提条件「3. Azure サービスプリンシパル作成」で取得した値を使用)
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-CLIENT-ID" `
-  --value "<your-client-id>"
+  --value $CLIENT_ID
 
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-CLIENT-SECRET" `
-  --value "<your-client-secret>"
+  --value $CLIENT_SECRET
 
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-TENANT-ID" `
-  --value "<your-tenant-id>"
+  --value $TENANT_ID
 
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-SUBSCRIPTION-ID" `
-  --value "<your-subscription-id>"
+  --value $SUBSCRIPTION_ID
 
 # GitHub PATを格納
 az keyvault secret set `

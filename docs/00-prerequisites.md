@@ -289,13 +289,27 @@ Web Appsデプロイ用のサービスプリンシパルを作成:
 $SP_NAME = "sp-github-actions-$ENV_NAME"
 $SUBSCRIPTION_ID = (az account show --query id --output tsv)
 
-az ad sp create-for-rbac `
+$SP_OUTPUT = az ad sp create-for-rbac `
   --name $SP_NAME `
   --role contributor `
   --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP `
-  --sdk-auth
+  --query "{clientId:appId, clientSecret:password, tenantId:tenant}" `
+  --output json
 
-# 出力されたJSONを保存（後でKey Vaultに格納）
+# 出力を表示
+$SP_OUTPUT | ConvertFrom-Json | ConvertTo-Json -Depth 10
+
+# 各値を変数に格納（後でKey Vaultに格納）
+$SP_JSON = $SP_OUTPUT | ConvertFrom-Json
+$CLIENT_ID = $SP_JSON.clientId
+$CLIENT_SECRET = $SP_JSON.clientSecret
+$TENANT_ID = $SP_JSON.tenantId
+
+Write-Host "`n=== サービスプリンシパル情報 ===" -ForegroundColor Green
+Write-Host "Client ID: $CLIENT_ID"
+Write-Host "Tenant ID: $TENANT_ID"
+Write-Host "Subscription ID: $SUBSCRIPTION_ID"
+Write-Host "Client Secret: [HIDDEN - 安全に保管してください]"
 ```
 
 **出力例**:
@@ -303,18 +317,16 @@ az ad sp create-for-rbac `
 {
   "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
   "clientSecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "subscriptionId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "activeDirectoryEndpointUrl": "https://login.microsoftonline.com",
-  "resourceManagerEndpointUrl": "https://management.azure.com/",
-  "activeDirectoryGraphResourceId": "https://graph.windows.net/",
-  "sqlManagementEndpointUrl": "https://management.core.windows.net:8443/",
-  "galleryEndpointUrl": "https://gallery.azure.com/",
-  "managementEndpointUrl": "https://management.core.windows.net/"
+  "tenantId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
 ```
 
-> **⚠️ 重要**: このJSONは安全に保管してください。Step 02でKey Vaultに格納します。
+> **⚠️ 重要**: 
+> - `clientId`、`clientSecret`、`tenantId`、`subscriptionId`の4つの値を安全に保管してください
+> - `clientSecret`は一度しか表示されません。必ずコピーしてください
+> - Step 02でこれらの値をKey Vaultに格納します
+>
+> **📝 注意**: `--sdk-auth`オプションは非推奨となり、将来のバージョンで削除されます
 
 ## トラブルシューティング
 
