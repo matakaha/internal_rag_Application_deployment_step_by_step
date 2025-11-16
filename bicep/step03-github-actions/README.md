@@ -11,56 +11,64 @@
 - vNet内リソースへのデプロイ方法
 - GitHub Actionsのベストプラクティス
 
-## 作成されるファイル
+## 作成される環境
+
+このステップでは、GitHub Actions CI/CD環境を構築します。実際のアプリケーションコードとWorkflowファイルは、[📦 internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo)で提供されています。
+
+### サンプルリポジトリに含まれるファイル
 
 | ファイル | 目的 |
 |---------|------|
 | `.github/workflows/deploy.yml` | メインデプロイワークフロー |
 | `scripts/setup-runner.ps1` | Runner起動スクリプト |
 | `scripts/cleanup-runner.ps1` | Runnerクリーンアップスクリプト |
+| `src/app.py` | FlaskベースのRAGチャットアプリ |
+| `requirements.txt` | Python依存関係 |
 
 ## 前提条件
 
 - Step 01, 02が完了していること
-- GitHubリポジトリが作成済み
-- GitHub Personal Access Token (PAT)が準備済み
+- [前提条件ドキュメント](../../docs/00-prerequisites.md)の事前準備タスクが完了していること
+  - サービスプリンシパル作成済み
+  - GitHub Personal Access Token (PAT)取得済み
+- フォークまたはクローンするGitHubリポジトリへのアクセス権
 
 ## セットアップ手順
 
-### 1. GitHubリポジトリの準備
+### 1. サンプルリポジトリの準備
 
-#### リポジトリ作成
+実際のアプリケーションコードとWorkflowは、サンプルリポジトリを使用します。
 
-```bash
-# GitHubでリポジトリを作成（Webまたはgh CLI）
-gh repo create <org>/<repo-name> --private
+#### オプションA: フォークして自分のリポジトリとして使用（推奨）
 
-# ローカルで初期化
-git init
-git remote add origin https://github.com/<org>/<repo-name>.git
+1. https://github.com/matakaha/internal_rag_Application_sample_repo を開く
+2. **Fork** ボタンをクリック
+3. 自分のアカウントにフォーク
+4. フォークしたリポジトリをクローン
+   ```powershell
+   git clone https://github.com/<your-username>/internal_rag_Application_sample_repo.git
+   cd internal_rag_Application_sample_repo
+   ```
+
+#### オプションB: 新しいリポジトリとして作成
+
+```powershell
+# サンプルをダウンロード
+git clone https://github.com/matakaha/internal_rag_Application_sample_repo.git my-rag-app
+cd my-rag-app
+
+# 新しいGitHubリポジトリを作成
+gh repo create <org>/<repo-name> --private --source=. --remote=origin --push
 ```
 
-#### ディレクトリ構造
-
-```
-your-app-repo/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml
-├── scripts/
-│   ├── setup-runner.ps1
-│   └── cleanup-runner.ps1
-├── src/
-│   └── (your application code)
-└── README.md
-```
+> **💡 ヒント**: フォークすると、元のリポジトリの更新を受け取りやすくなります。
 
 ### 2. GitHub Secretsの設定
 
 #### 必要なSecrets
 
 | Secret名 | 内容 | 取得方法 |
-|---------|------|---------||
+|---------|------|---------|
 | `AZURE_CREDENTIALS` | サービスプリンシパル情報 | Step 02で格納したKey Vaultから |
 | `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
 | `GH_PAT` | Personal Access Token | GitHub Settings |
@@ -168,7 +176,46 @@ gh secret list
 
 または、GitHub Web UIで Settings → Secrets and variables → Actions を開いて、3つのSecretが表示されることを確認してください。
 
-### 3. Workflowファイルの作成
+---
+
+## 📦 サンプルアプリケーションリポジトリの利用
+
+**ここまでで、GitHub Actions CI/CD環境の構築は完了しました。**
+
+実際のアプリケーションコード（Workflowファイル、Pythonアプリ、デプロイスクリプト等）は、以下のサンプルリポジトリで提供しています:
+
+### 🔗 [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo)
+
+このサンプルリポジトリには以下が含まれています:
+- ✅ `.github/workflows/deploy.yml` - 完全なGitHub Actionsワークフロー
+- ✅ `scripts/` - Self-hosted Runnerセットアップスクリプト
+- ✅ `src/` - FlaskベースのRAGチャットアプリケーション
+- ✅ `docs/` - ステップバイステップのデプロイガイド
+
+### 🚀 次のステップ
+
+1. **サンプルリポジトリをフォーク/クローン**
+   ```powershell
+   git clone https://github.com/matakaha/internal_rag_Application_sample_repo.git
+   cd internal_rag_Application_sample_repo
+   ```
+
+2. **サンプルリポジトリのREADMEに従って進める**
+   - [Step 1: 環境準備](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step01-setup-environment.md)
+   - [Step 2: データ準備](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step02-data-preparation.md)
+   - [Step 3: AI Searchインデックス作成](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step03-indexing.md)
+   - [Step 4: アプリケーションデプロイ](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step04-deploy-app.md)
+   - [Step 5: テストと運用](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step05-testing.md)
+
+> **💡 重要**: サンプルリポジトリを使用する場合、以下の「3. Workflowファイルの作成」以降の内容は**実施不要**です。サンプルリポジトリに全て実装済みです。
+
+---
+
+## 📝 参考: Workflowファイルの詳細解説
+
+以下は、サンプルリポジトリで使用されているWorkflowファイルの解説です。自分でカスタマイズする場合の参考としてご覧ください。
+
+### Workflowファイルの構成
 
 `.github/workflows/deploy.yml`:
 

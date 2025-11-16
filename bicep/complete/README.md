@@ -179,17 +179,32 @@ Bicepモジュールが自動的に依存関係を解決し、正しい順序で
 
 デプロイが完了したら:
 
-1. **GitHub Actionsシークレットの設定**
-   - [Step 03のドキュメント](../step03-github-actions/README.md)を参照
-   - Key VaultにAzure認証情報を保存
+### 1. GitHub Secretsの設定
 
-2. **Self-hosted Runnerの準備**
-   - Container Instanceの作成スクリプトを準備
-   - Runnerイメージのビルド
+🔗 **[Step 03 - GitHub Secretsの設定](../step03-github-actions/README.md#2-github-secretsの設定)**
 
-3. **ワークフローの作成**
-   - GitHub Actionsワークフローファイルを作成
-   - デプロイパイプラインのテスト
+Key Vaultから取得した値を使って、以下の3つのGitHub Secretsを設定します:
+- `AZURE_CREDENTIALS`
+- `KEY_VAULT_NAME`
+- `GH_PAT`
+
+### 2. アプリケーションのデプロイ
+
+以下の2つのオプションがあります:
+
+#### オプション1: サンプルアプリケーションを使用（推奨）
+
+📦 **[internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo)**
+
+完全に動作するRAGチャットアプリケーションとGitHub Actionsワークフローが含まれています。
+- [Step 1: 環境準備](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step01-setup-environment.md)
+- [Step 4: アプリケーションデプロイ](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step04-deploy-app.md)
+
+#### オプション2: 独自アプリケーションを開発
+
+独自のアプリケーションをデプロイする場合は、以下を参照してください:
+- [Step 03: GitHub Actionsワークフロー](../step03-github-actions/README.md) - Workflow設定の詳細
+- [参考: Workflowファイルの詳細解説](../step03-github-actions/README.md#📝-参考-workflowファイルの詳細解説)
 
 ## クリーンアップ
 

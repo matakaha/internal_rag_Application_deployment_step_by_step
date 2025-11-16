@@ -10,9 +10,10 @@
 
 ✅ [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step)の環境が構築済み  
 ✅ Azure CLI、Bicep CLIがインストール済み  
-✅ GitHubアカウント、リポジトリが準備済み  
-✅ GitHub Personal Access Token (PAT)を取得済み  
-✅ サービスプリンシパルを作成済み
+✅ [前提条件ドキュメント - 事前準備タスク](00-prerequisites.md#事前準備タスク)を完了済み
+  - 既存環境の確認
+  - GitHub PAT作成
+  - サービスプリンシパル作成
 
 ## デプロイ方法の選択
 
@@ -104,11 +105,11 @@ az network vnet subnet show `
 > 
 > Key VaultはPrivate Endpoint経由でのみアクセス可能です。VPN接続からローカルPCで操作する場合、**DNS Private Resolverの設定**が必須です。
 > 
-> 📚 **[VPN接続セットアップガイド](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md)** の **Step 8**（DNS Private Resolver作成）および **Step 9**（VPN クライアント構成ファイルのDNS設定）を完了してください。
+> 📚 **別リポジトリ「[internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step)」の [VPN接続セットアップガイド](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md)** で説明されている **Step 8**（DNS Private Resolver作成）および **Step 9**（VPN クライアント構成ファイルのDNS設定）を完了してください。
 > 
 > **DNS設定が未完了の場合**は、[Step 02 README](../bicep/step02-keyvault/README.md#重要-vpn接続時のdns設定について) の「DNS設定が未完了の場合の対処法」を参照してください。
 
-#### 7-1. オブジェクトIDの取得
+#### 2-1. オブジェクトIDの取得
 
 ```powershell
 # 現在のユーザーのオブジェクトIDを取得
@@ -116,7 +117,7 @@ $OBJECT_ID = az ad signed-in-user show --query id --output tsv
 echo "Your Object ID: $OBJECT_ID"
 ```
 
-#### 7-2. パラメータファイルの編集
+#### 2-2. パラメータファイルの編集
 
 `bicep/step02-keyvault/parameters.bicepparam` を開いて、`adminObjectId` を設定:
 
@@ -124,7 +125,7 @@ echo "Your Object ID: $OBJECT_ID"
 param adminObjectId = '<YOUR_OBJECT_ID>'
 ```
 
-#### 7-3. デプロイ実行
+#### 2-3. デプロイ実行
 
 ```powershell
 cd ../step02-keyvault
@@ -141,47 +142,26 @@ az keyvault show `
   --query "{Name:name, VaultUri:properties.vaultUri, PublicNetworkAccess:properties.publicNetworkAccess}"
 ```
 
-#### 7-4. シークレットの設定
+#### 2-4. シークレットの設定
 
+詳細な手順は **[Step 02 README - シークレットの設定](../bicep/step02-keyvault/README.md#シークレットの設定)** を参照してください。
+
+**概要**:
 ```powershell
 $KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
 
-# サービスプリンシパル情報を格納
+# 1. サービスプリンシパル情報を格納
 # (前提条件「3. Azure サービスプリンシパル作成」で取得した値を使用)
-az keyvault secret set `
-  --vault-name $KEY_VAULT_NAME `
-  --name "AZURE-CLIENT-ID" `
-  --value $CLIENT_ID
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-ID" --value $CLIENT_ID
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-SECRET" --value $CLIENT_SECRET
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-TENANT-ID" --value $TENANT_ID
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-SUBSCRIPTION-ID" --value $SUBSCRIPTION_ID
 
-az keyvault secret set `
-  --vault-name $KEY_VAULT_NAME `
-  --name "AZURE-CLIENT-SECRET" `
-  --value $CLIENT_SECRET
+# 2. GitHub PATを格納
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --value "<your-github-pat>"
 
-az keyvault secret set `
-  --vault-name $KEY_VAULT_NAME `
-  --name "AZURE-TENANT-ID" `
-  --value $TENANT_ID
-
-az keyvault secret set `
-  --vault-name $KEY_VAULT_NAME `
-  --name "AZURE-SUBSCRIPTION-ID" `
-  --value $SUBSCRIPTION_ID
-
-# GitHub PATを格納
-az keyvault secret set `
-  --vault-name $KEY_VAULT_NAME `
-  --name "GITHUB-PAT" `
-  --value "<your-github-pat>"
-
-# Web Apps publish profile取得・格納
-az webapp deployment list-publishing-profiles `
-  --resource-group $RESOURCE_GROUP `
-  --name "app-internal-rag-$ENV_NAME" `
-  --xml | az keyvault secret set `
-    --vault-name $KEY_VAULT_NAME `
-    --name "WEBAPP-PUBLISH-PROFILE" `
-    --file /dev/stdin
+# 3. Web Apps publish profileを格納（--fileオプション使用）
+# 詳細はStep 02 READMEを参照
 
 # シークレット確認
 az keyvault secret list `
@@ -200,64 +180,43 @@ az keyvault secret list `
 
 **学習内容**: GitHub Actions、Self-hosted Runner、CI/CDパイプライン
 
-#### 8-1. アプリケーションリポジトリの準備
+> **📦 重要**: Step 03では、実際のアプリケーションコードとWorkflowファイルは [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) を使用することを推奨します。
 
+#### 3-1. サンプルリポジトリを使用する場合（推奨）
+
+1. **サンプルリポジトリをフォーク/クローン**
+   ```powershell
+   git clone https://github.com/matakaha/internal_rag_Application_sample_repo.git
+   cd internal_rag_Application_sample_repo
+   ```
+
+2. **GitHub Secretsを設定**
+   
+   🔗 **[Step 03 README - GitHub Secretsの設定](../bicep/step03-github-actions/README.md#2-github-secretsの設定)** を参照
+
+3. **サンプルリポジトリのガイドに従う**
+   - [Step 1: 環境準備](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step01-setup-environment.md)
+   - [Step 4: アプリケーションデプロイ](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step04-deploy-app.md)
+
+#### 3-2. 独自のリポジトリを使用する場合
+
+独自のアプリケーションをデプロイする場合は、以下の手順で進めてください。
+
+**リポジトリ準備**
 ```powershell
-# 新しいリポジトリ作成（GitHub Web or gh CLI）
+# 新しいリポジトリ作成
 gh repo create <org>/<repo-name> --private
-
-# または既存リポジトリを使用
 cd <your-app-repo>
 ```
 
-#### 8-2. Workflowファイルの配置
+**GitHub Secrets設定**
 
-```powershell
-# ディレクトリ作成
-mkdir -p .github/workflows
+🔗 **[Step 03 README - GitHub Secretsの設定](../bicep/step03-github-actions/README.md#2-github-secretsの設定)** を参照
 
-# Workflowファイルをコピー
-# Step 03 READMEからworkflow例をコピーして配置
-notepad .github/workflows/deploy.yml
-```
+**Workflowファイル作成**
 
-#### 8-3. GitHub Secretsの設定
-
-```powershell
-# サービスプリンシパル情報をJSONファイルに保存
-@"
-{
-  "clientId": "<client-id>",
-  "clientSecret": "<client-secret>",
-  "subscriptionId": "<subscription-id>",
-  "tenantId": "<tenant-id>"
-}
-"@ | Out-File -FilePath azure-credentials.json -Encoding utf8
-
-# GitHub Secretsに設定
-gh secret set AZURE_CREDENTIALS < azure-credentials.json
-# Key Vault名を登録
-gh secret set KEY_VAULT_NAME -b "kv-gh-runner-$ENV_NAME"
-gh secret set GH_PAT -b "<your-github-pat>"
-
-# ファイル削除（セキュリティ）
-Remove-Item azure-credentials.json
-```
-
-または、GitHub Web UIから:
-1. リポジトリ → Settings → Secrets and variables → Actions
-2. "New repository secret" で各Secretを追加
-
-#### 8-4. 初回デプロイ実行
-
-```powershell
-# コミット・プッシュ
-git add .
-git commit -m "Add GitHub Actions workflow"
-git push origin main
-
-# GitHub Actionsタブでワークフロー実行を確認
-```
+サンプルリポジトリの `.github/workflows/deploy.yml` を参考にしてください。
+詳細は [Step 03 README - 参考: Workflowファイルの詳細解説](../bicep/step03-github-actions/README.md#📝-参考-workflowファイルの詳細解説) を参照してください。
 
 **所要時間**: 約10-15分（初回デプロイ含む）
 

@@ -296,17 +296,33 @@ Web Appsデプロイ用のサービスプリンシパルを作成します。
 #### 方法1: Azure CLI（推奨）
 
 ```powershell
+# 環境変数の確認（事前準備タスク1で設定済みのはず）
+$ENV_NAME = "dev"
+$RESOURCE_GROUP = "rg-internal-rag-dev"
+
 # サービスプリンシパル作成
 $SP_NAME = "sp-github-actions-$ENV_NAME"
 $SUBSCRIPTION_ID = (az account show --query id --output tsv)
 
-az ad sp create-for-rbac `
+$SP_OUTPUT = az ad sp create-for-rbac `
   --name $SP_NAME `
   --role contributor `
-  --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP
+  --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP `
+  | ConvertFrom-Json
 
-# 出力されたJSON（appId, password, tenant）をメモしておく
+# 出力された値を変数に保存（Step 02で使用）
+$CLIENT_ID = $SP_OUTPUT.appId
+$CLIENT_SECRET = $SP_OUTPUT.password
+$TENANT_ID = $SP_OUTPUT.tenant
+
+# 確認（パスワードは表示されません）
+Write-Host "CLIENT_ID: $CLIENT_ID"
+Write-Host "TENANT_ID: $TENANT_ID"
+Write-Host "SUBSCRIPTION_ID: $SUBSCRIPTION_ID"
+Write-Host "CLIENT_SECRET: (保存済み - 表示されません)"
 ```
+
+> **💡 ヒント**: これらの変数は同じPowerShellセッションで保持されます。Step 02のシークレット設定で使用します。
 
 **出力例**:
 ```json

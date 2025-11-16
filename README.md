@@ -46,6 +46,8 @@ GitHub ActionsでAzure閉域環境（vNet統合済Web Apps）へCI/CDデプロ�
 
 ## 🚀 クイックスタート
 
+> **📘 初めての方へ**: まず [前提条件](docs/00-prerequisites.md) を確認し、必要な環境とツールが揃っているか確認してください。
+
 ### 前提条件
 
 - [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step)の環境が構築済みであること
@@ -94,10 +96,12 @@ az deployment group create `
 - デプロイ用認証情報の格納
 
 ### Step 03: GitHub Actions Workflow [→](bicep/step03-github-actions/)
-- Self-hosted Runnerのセットアップ
-- Container Instanceの動的起動
-- Key Vaultからのシークレット取得
-- Web Appsへのデプロイ
+- GitHub Secretsの設定方法
+- サンプルアプリケーションリポジトリの利用ガイド
+- Self-hosted Runnerの仕組み理解
+- CI/CDパイプラインの構築
+
+> **📦 実際のアプリケーション**: [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) で完全なRAGアプリを提供
 
 ### 統合デプロイ [→](bicep/complete/)
 全ステップを一括でデプロイする統合版
@@ -107,7 +111,6 @@ az deployment group create `
 - [前提条件](docs/00-prerequisites.md)
 - [アーキテクチャ概要](docs/01-architecture.md)
 - [デプロイガイド](docs/deployment-guide.md)
-- [GitHub Actions設定ガイド](docs/github-actions-setup.md)
 
 ## 💰 コスト
 

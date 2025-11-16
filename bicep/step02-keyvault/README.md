@@ -58,6 +58,10 @@ param adminObjectId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
 ### 2. デプロイの実行
 
 ```powershell
+# 環境変数の設定（Step 01で設定済みの場合はスキップ可）
+$RESOURCE_GROUP = "rg-internal-rag-dev"
+$ENV_NAME = "dev"
+
 # Step 02ディレクトリに移動
 cd bicep/step02-keyvault
 
@@ -200,6 +204,12 @@ $KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
 # サービスプリンシパル情報を格納
 # (前提条件「3. Azure サービスプリンシパル作成」で取得した$CLIENT_ID, $CLIENT_SECRET, $TENANT_ID, $SUBSCRIPTION_IDを使用)
 
+# 変数が未定義の場合は、以下のコマンドで再取得できます:
+# $CLIENT_ID = "<appId-value>"
+# $CLIENT_SECRET = "<password-value>"
+# $TENANT_ID = "<tenant-value>"
+# $SUBSCRIPTION_ID = (az account show --query id --output tsv)
+
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "AZURE-CLIENT-ID" `
@@ -221,8 +231,10 @@ az keyvault secret set `
   --value $SUBSCRIPTION_ID
 ```
 
-> **💡 ヒント**: 前提条件のコマンドで変数に格納済みの場合は、上記のように変数を使用できます。
-> 手動で値を設定する場合は、`--value "<your-value>"`の形式で指定してください。
+> **💡 ヒント**: 
+> - 前提条件のコマンドで変数に格納済みの場合は、上記のように変数を使用できます
+> - PowerShellセッションを閉じた場合は、変数が失われるため手動で再設定してください
+> - 手動で値を設定する場合は、コメントアウトされた行のコメントを外して値を入力してください
 ```
 
 ### 2. Web Apps publish profileの格納（オプション）
@@ -248,6 +260,8 @@ Remove-Item publish-profile.xml
 
 ### 3. GitHub Personal Access Tokenの格納
 
+[前提条件 - GitHub PAT作成](../../docs/00-prerequisites.md#2-github-pat作成)で取得したGitHub PATを格納します。
+
 ```powershell
 # GitHub PATを格納
 az keyvault secret set `
@@ -255,6 +269,8 @@ az keyvault secret set `
   --name "GITHUB-PAT" `
   --value "<your-github-pat>"
 ```
+
+> **💡 ヒント**: GitHub PATは、前提条件のタスク2で作成したPersonal Access Tokenです。
 
 ### 4. シークレット一覧の確認
 
@@ -441,8 +457,16 @@ az network vnet subnet show `
 
 Key Vaultが完成したら、次のステップに進みましょう:
 
-- [Step 03: GitHub Actions Workflowの構築](../step03-github-actions/README.md)
-- [デプロイガイドに戻る](../../docs/deployment-guide.md)
+### オプション1: サンプルアプリケーションを使用（推奨）
+
+📦 **[internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo)** - 実際に動作するRAGチャットアプリ
+
+このサンプルリポジトリには、完全なアプリケーションコードとGitHub Actionsワークフローが含まれています。
+
+### オプション2: 独自アプリケーションを開発
+
+- [Step 03: GitHub Actions Workflowの構築](../step03-github-actions/README.md) - Workflow設定の詳細
+- [デプロイガイド](../../docs/deployment-guide.md) - 全体の流れ
 
 ## 参考リンク
 
