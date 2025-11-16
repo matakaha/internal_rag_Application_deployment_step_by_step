@@ -60,25 +60,113 @@ your-app-repo/
 #### 必要なSecrets
 
 | Secret名 | 内容 | 取得方法 |
-|---------|------|---------|
+|---------|------|---------||
 | `AZURE_CREDENTIALS` | サービスプリンシパル情報 | Step 02で格納したKey Vaultから |
 | `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
-| `GITHUB_PAT` | Personal Access Token | GitHub Settings |
+| `GH_PAT` | Personal Access Token | GitHub Settings |
 
 #### Secretsの設定方法
 
-```bash
-# GitHub CLIを使用
-gh secret set AZURE_CREDENTIALS < azure-credentials.json
-# Key Vault名
-gh secret set KEY_VAULT_NAME -b "kv-gh-runner-dev"
-gh secret set GITHUB_PAT -b "<your-pat>"
+##### 方法1: GitHub CLI使用（推奨）
+
+> **📋 前提条件**: GitHub CLIがインストール済みであること。インストールされていない場合は[方法2](#方法2-github-web-ui手動設定cli不要)を使用してください。
+
+**GitHub CLIのインストール**:
+```powershell
+# wingetでインストール
+winget install --id GitHub.cli
+
+# インストール後、認証
+gh auth login
 ```
 
-または、GitHub Webから:
-1. リポジトリの Settings → Secrets and variables → Actions
-2. "New repository secret" をクリック
-3. 各Secretを追加
+**Secretsの設定**:
+```powershell
+# 1. Key Vaultからサービスプリンシパル情報を取得
+$KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
+
+$CLIENT_ID = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-ID" --query value -o tsv
+$CLIENT_SECRET = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-SECRET" --query value -o tsv
+$TENANT_ID = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-TENANT-ID" --query value -o tsv
+$SUBSCRIPTION_ID = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-SUBSCRIPTION-ID" --query value -o tsv
+
+# 2. JSON形式でAZURE_CREDENTIALSを作成
+$AZURE_CREDENTIALS = @{
+  clientId = $CLIENT_ID
+  clientSecret = $CLIENT_SECRET
+  subscriptionId = $SUBSCRIPTION_ID
+  tenantId = $TENANT_ID
+} | ConvertTo-Json -Compress
+
+# 3. GitHub Secretsに設定
+gh secret set AZURE_CREDENTIALS --body $AZURE_CREDENTIALS
+gh secret set KEY_VAULT_NAME --body $KEY_VAULT_NAME
+
+# 4. GitHub PATをKey Vaultから取得して設定
+$GITHUB_PAT = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --query value -o tsv
+gh secret set GH_PAT --body $GITHUB_PAT
+```
+
+> **💡 ヒント**: すべての認証情報をKey Vaultから取得するため、ローカルに機密情報を残しません。
+
+##### 方法2: GitHub Web UI（手動設定、CLI不要）
+
+GitHub CLIをインストールしたくない場合は、以下の手順でWebブラウザから設定できます。
+
+**ステップ1: Key Vaultから値を取得して表示**
+
+```powershell
+# 1. Key Vaultからサービスプリンシパル情報を取得
+$KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
+
+$CLIENT_ID = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-ID" --query value -o tsv
+$CLIENT_SECRET = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-SECRET" --query value -o tsv
+$TENANT_ID = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-TENANT-ID" --query value -o tsv
+$SUBSCRIPTION_ID = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "AZURE-SUBSCRIPTION-ID" --query value -o tsv
+$GITHUB_PAT = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --query value -o tsv
+
+# 2. AZURE_CREDENTIALS用のJSON文字列を作成・表示
+$AZURE_CREDENTIALS_JSON = @"
+{
+  "clientId": "$CLIENT_ID",
+  "clientSecret": "$CLIENT_SECRET",
+  "subscriptionId": "$SUBSCRIPTION_ID",
+  "tenantId": "$TENANT_ID"
+}
+"@
+
+Write-Host "`n=== AZURE_CREDENTIALS (以下をコピー) ===" -ForegroundColor Green
+Write-Host $AZURE_CREDENTIALS_JSON
+
+Write-Host "`n=== KEY_VAULT_NAME (以下をコピー) ===" -ForegroundColor Green
+Write-Host $KEY_VAULT_NAME
+
+Write-Host "`n=== GH_PAT (以下をコピー) ===" -ForegroundColor Green
+Write-Host $GITHUB_PAT
+```
+
+**ステップ2: GitHub Web UIでSecretsを設定**
+
+1. GitHubリポジトリを開く
+2. **Settings** → **Secrets and variables** → **Actions** に移動
+3. **New repository secret** をクリック
+4. 以下の3つのSecretを順番に作成:
+
+| Name | Secret (上記で表示された値をコピー&ペースト) |
+|------|---------------------------------------------|
+| `AZURE_CREDENTIALS` | JSON形式の値全体(中括弧`{}`を含む) |
+| `KEY_VAULT_NAME` | `kv-gh-runner-dev` など |
+| `GH_PAT` | PATの値 |
+
+5. 各Secretで **Add secret** をクリック
+
+**確認**:
+```powershell
+# GitHub CLIがある場合のみ確認可能
+gh secret list
+```
+
+または、GitHub Web UIで Settings → Secrets and variables → Actions を開いて、3つのSecretが表示されることを確認してください。
 
 ### 3. Workflowファイルの作成
 

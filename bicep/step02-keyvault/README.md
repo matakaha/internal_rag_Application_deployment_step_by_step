@@ -89,58 +89,105 @@ az network private-endpoint show `
 
 ### 重要: VPN接続時のDNS設定について
 
-Key VaultはPrivate Endpoint経由でのみアクセス可能です。VPN接続している場合でも、ローカルPCから直接アクセスするには **DNS Private Resolver** の設定が必要です。
+Key VaultはPrivate Endpoint経由でのみアクセス可能です。VPN接続している場合でも、ローカルPCから直接アクセスするには **DNS Private Resolver** の設定とVPN設定ファイルの編集が必要です。
 
-#### VPN接続でKey Vaultにアクセスする場合
+#### VPN設定ファイルの編集
 
-VPN接続時に適切なDNS設定を行うには、以下のドキュメントを参照してください:
+**ステップ1: DNS設定の確認**
 
-📚 **[VPN接続セットアップガイド - Step 8 & Step 9](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md#step-8-azure-dns-private-resolver-%E3%81%AE%E4%BD%9C%E6%88%90)**
+まず、現在のDNS設定にKey Vault用のエントリがあるか確認します:
 
-特に重要なステップ:
-- **Step 8**: Azure DNS Private Resolver の作成（10.0.5.4）
-- **Step 9**: VPN クライアント構成ファイル（azurevpnconfig.xml）への DNS 設定追加
-
-これらの設定により、Private Endpoint の名前解決が正しく機能するようになります。
-
-#### DNS設定が未完了の場合の対処法
-
-VPN接続時のDNS設定が完了していない場合は、以下のいずれかの方法でシークレットを設定してください:
-
-**方法1: 一時的にパブリックアクセスを許可（作業後は必ず無効化）**
 ```powershell
-# 現在のパブリックIPを取得
-$MY_IP = (Invoke-WebRequest -Uri "https://api.ipify.org").Content
+# NRPTにKey Vaultのエントリがあるか確認
+Get-DnsClientNrptPolicy | Where-Object {$_.Namespace -like "*.vault*"} | Format-Table -AutoSize
 
-# Key Vaultにファイアウォールルールを追加
-az keyvault network-rule add `
-  --resource-group $RESOURCE_GROUP `
-  --name $KEY_VAULT_NAME `
-  --ip-address "$MY_IP/32"
-
-# パブリックアクセスを一時的に有効化
-az keyvault update `
-  --resource-group $RESOURCE_GROUP `
-  --name $KEY_VAULT_NAME `
-  --public-network-access Enabled
-
-# シークレット設定後、必ずパブリックアクセスを無効化
-az keyvault update `
-  --resource-group $RESOURCE_GROUP `
-  --name $KEY_VAULT_NAME `
-  --public-network-access Disabled
-
-az keyvault network-rule remove `
-  --resource-group $RESOURCE_GROUP `
-  --name $KEY_VAULT_NAME `
-  --ip-address "$MY_IP/32"
+# エントリが無い場合は以下の手順でVPN設定を更新
 ```
 
-**方法2: Azure Cloud Shell を使用**
+**期待される結果**:
+```
+Namespace                NameServers
+---------                -----------
+.vault.azure.net         10.0.5.4
+.vaultcore.azure.net     10.0.5.4
+```
+
+上記のエントリが**存在しない場合**は、以下の手順でVPN設定ファイルを編集してください。
+
+**ステップ2: VPN設定ファイル（azurevpnconfig.xml）の編集**
+
+1. VPN設定ファイルをテキストエディタで開きます
+   - Azure VPN Clientを使用している場合: 設定をエクスポートして編集
+   - 通常のVPN接続の場合: ダウンロードした`azurevpnconfig.xml`を編集
+
+2. `<dnssuffixes>`セクションに以下の2行を追加:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<AzureVpnProfile>
+  <clientconfig>
+    <dnsservers>
+      <dnsserver>10.0.5.4</dnsserver>
+    </dnsservers>
+    <dnssuffixes>
+      <dnssuffix>.azurewebsites.net</dnssuffix>
+      <dnssuffix>.search.windows.net</dnssuffix>
+      <dnssuffix>.blob.core.windows.net</dnssuffix>
+      <dnssuffix>.openai.azure.com</dnssuffix>
+      <!-- ⬇️ この2行を追加 -->
+      <dnssuffix>.vault.azure.net</dnssuffix>
+      <dnssuffix>.vaultcore.azure.net</dnssuffix>
+    </dnssuffixes>
+  </clientconfig>
+</AzureVpnProfile>
+```
+
+**ステップ3: VPN接続の再設定**
+
+**Azure VPN Clientを使用している場合**:
+
+1. Azure VPN Clientアプリを開く
+2. 既存の接続を削除
+3. 編集した`azurevpnconfig.xml`を再インポート
+4. VPN接続を確立
+
+**Windows標準VPN接続を使用している場合**:
+
+```powershell
+# 既存のVPN接続を削除
+Remove-VpnConnection -Name "vnet-internal-rag-dev" -Force
+
+# 編集したazurevpnconfig.xmlから再インポート
+# （または新しい設定ファイルをダウンロードして再設定）
+```
+
+**ステップ4: 設定の確認**
+
+VPN再接続後、設定が反映されたことを確認します:
+
+```powershell
+# DNSキャッシュをクリア
+Clear-DnsClientCache
+
+# NRPTにKey Vaultのエントリが追加されたか確認
+Get-DnsClientNrptPolicy | Where-Object {$_.Namespace -like "*.vault*"} | Format-Table -AutoSize
+
+# DNS解決テスト
+nslookup kv-gh-runner-dev.vault.azure.net
+
+# 期待される結果: 10.0.1.x (Private IP) が返される
+```
+
+#### DNS設定が未完了の場合の一時的な対処法
+
+VPN設定の更新が完了するまでの間は、**Azure Cloud Shell**を使用してKey Vaultにアクセスできます:
+
 ```powershell
 # Azure Portal → Cloud Shell (PowerShell) から実行
-# vNet内のリソースにアクセス可能
+# Cloud ShellはAzure内部からアクセスするため、Private Endpoint経由で接続可能
 ```
+
+> **💡 参考**: 詳細なVPN設定手順は [VPN接続セットアップガイド - Step 8 & Step 9](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md#step-8-azure-dns-private-resolver-%E3%81%AE%E4%BD%9C%E6%88%90) を参照してください。
 
 ### 1. サービスプリンシパル情報の格納
 
@@ -181,18 +228,23 @@ az keyvault secret set `
 ### 2. Web Apps publish profileの格納（オプション）
 
 ```powershell
-# Web Appsのpublish profileを取得
-$PUBLISH_PROFILE = az webapp deployment list-publishing-profiles `
+# Web Appsのpublish profileを一時ファイルに保存
+az webapp deployment list-publishing-profiles `
   --resource-group $RESOURCE_GROUP `
   --name "app-internal-rag-$ENV_NAME" `
-  --xml
+  --xml > publish-profile.xml
 
-# Key Vaultに格納
+# ファイルからKey Vaultに格納
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "WEBAPP-PUBLISH-PROFILE" `
-  --value $PUBLISH_PROFILE
+  --file publish-profile.xml
+
+# 一時ファイルを削除
+Remove-Item publish-profile.xml
 ```
+
+> **💡 ヒント**: XMLファイルを直接`--value`で渡すとエラーになるため、`--file`オプションを使用します。
 
 ### 3. GitHub Personal Access Tokenの格納
 

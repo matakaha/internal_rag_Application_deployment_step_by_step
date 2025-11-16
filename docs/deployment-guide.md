@@ -238,7 +238,7 @@ notepad .github/workflows/deploy.yml
 gh secret set AZURE_CREDENTIALS < azure-credentials.json
 # Key Vault名を登録
 gh secret set KEY_VAULT_NAME -b "kv-gh-runner-$ENV_NAME"
-gh secret set GITHUB_PAT -b "<your-github-pat>"
+gh secret set GH_PAT -b "<your-github-pat>"
 
 # ファイル削除（セキュリティ）
 Remove-Item azure-credentials.json
