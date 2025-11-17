@@ -67,46 +67,16 @@ az network vnet show `
   --query name
 ```
 
-### Step 01: Container Instance Subnet追加
-
-**学習内容**: Self-hosted Runner用のSubnet、NSG設定
-
-```powershell
-cd bicep/step01-runner-subnet
-
-# パラメータファイルの確認・編集
-notepad parameters.bicepparam
-
-# デプロイ
-az deployment group create `
-  --resource-group $RESOURCE_GROUP `
-  --template-file main.bicep `
-  --parameters parameters.bicepparam
-
-# デプロイ結果の確認
-az network vnet subnet show `
-  --resource-group $RESOURCE_GROUP `
-  --vnet-name "vnet-internal-rag-$ENV_NAME" `
-  --name snet-container-instances `
-  --query "{Name:name, AddressPrefix:addressPrefix, Delegations:delegations[].serviceName}"
-```
-
-**所要時間**: 約2-3分
-
-**詳細**: [Step 01 README](../bicep/step01-runner-subnet/README.md)
-
----
-
-### Step 00.5: Azure Container Registryの構築 (推奨)
+### Step 01: Azure Container Registryの構築
 
 **学習内容**: ACR作成、Private Endpoint統合、Dockerイメージビルド、完全閉域環境でのコンテナー実行
 
 > **💡 推奨理由**: 閉域環境でのセキュリティと安定性を確保するため、Container Instance起動時にインターネット経由でイメージをダウンロードするのではなく、事前にACRにビルドしたイメージを使用することを強く推奨します。
 
-#### 0.5-1. ACRのデプロイ
+#### 1-1. ACRのデプロイ
 
 ```powershell
-cd bicep/step00.5-container-registry
+cd bicep/step01-container-registry
 
 # パラメータファイルの確認・編集
 notepad parameters.bicepparam
@@ -128,7 +98,7 @@ $ACR_NAME = az deployment group show `
 echo "ACR_NAME: $ACR_NAME"
 ```
 
-#### 0.5-2. Runnerコンテナーイメージのビルドとプッシュ
+#### 1-2. Runnerコンテナーイメージのビルドとプッシュ
 
 ```powershell
 # パブリックアクセスを一時的に有効化（ローカルからプッシュするため）
@@ -157,15 +127,43 @@ az acr repository show-tags --name $ACR_NAME --repository github-runner --output
 
 **所要時間**: 約10-15分（初回ビルド含む）
 
-**詳細**: [Step 00.5 README](../bicep/step00.5-container-registry/README.md)
-
-**スキップした場合**: Step 03で従来方式（インターネット経由でイメージダウンロード）を使用できますが、セキュリティと安定性が低下します。
+**詳細**: [Step 01 README](../bicep/step01-container-registry/README.md)
 
 ---
 
-### Step 02: Key Vaultの構築
+### Step 02: Container Instance Subnetの追加
 
-**学習内容**: Key Vault、Private Endpoint、アクセスポリシー、シークレット管理
+**学習内容**: Self-hosted Runner用のSubnet作成、NSG設定、Container Instances委任
+
+```powershell
+cd bicep/step02-runner-subnet
+
+# パラメータファイルの確認・編集
+notepad parameters.bicepparam
+
+# デプロイ
+az deployment group create `
+  --resource-group $RESOURCE_GROUP `
+  --template-file main.bicep `
+  --parameters parameters.bicepparam
+
+# デプロイ結果の確認
+az network vnet subnet show `
+  --resource-group $RESOURCE_GROUP `
+  --vnet-name "vnet-internal-rag-$ENV_NAME" `
+  --name snet-container-instances `
+  --query "{Name:name, AddressPrefix:addressPrefix, Delegations:delegations[].serviceName}"
+```
+
+**所要時間**: 約2-3分
+
+**詳細**: [Step 02 README](../bicep/step02-runner-subnet/README.md)
+
+---
+
+### Step 03: Key Vaultの構築
+
+**学習内容**: Key Vault作成、Private Endpoint統合、アクセスポリシー設定、シークレット管理
 
 > ⚠️ **重要: VPN接続時のDNS設定について**
 > 
@@ -173,9 +171,9 @@ az acr repository show-tags --name $ACR_NAME --repository github-runner --output
 > 
 > 📚 **別リポジトリ「[internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step)」の [VPN接続セットアップガイド](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md)** で説明されている **Step 8**（DNS Private Resolver作成）および **Step 9**（VPN クライアント構成ファイルのDNS設定）を完了してください。
 > 
-> **DNS設定が未完了の場合**は、[Step 02 README](../bicep/step02-keyvault/README.md#重要-vpn接続時のdns設定について) の「DNS設定が未完了の場合の対処法」を参照してください。
+> **DNS設定が未完了の場合**は、[Step 03 README](../bicep/step03-keyvault/README.md#重要-vpn接続時のdns設定について) の「DNS設定が未完了の場合の対処法」を参照してください。
 
-#### 2-1. オブジェクトIDの取得
+#### 3-1. オブジェクトIDの取得
 
 ```powershell
 # 現在のユーザーのオブジェクトIDを取得
@@ -183,18 +181,18 @@ $OBJECT_ID = az ad signed-in-user show --query id --output tsv
 echo "Your Object ID: $OBJECT_ID"
 ```
 
-#### 2-2. パラメータファイルの編集
+#### 3-2. パラメータファイルの編集
 
-`bicep/step02-keyvault/parameters.bicepparam` を開いて、`adminObjectId` を設定:
+`bicep/step03-keyvault/parameters.bicepparam` を開いて、`adminObjectId` を設定:
 
 ```bicep
 param adminObjectId = '<YOUR_OBJECT_ID>'
 ```
 
-#### 2-3. デプロイ実行
+#### 3-3. デプロイ実行
 
 ```powershell
-cd ../step02-keyvault
+cd bicep/step03-keyvault
 
 # デプロイ
 az deployment group create `
@@ -208,7 +206,7 @@ az keyvault show `
   --query "{Name:name, VaultUri:properties.vaultUri, PublicNetworkAccess:properties.publicNetworkAccess}"
 ```
 
-#### 2-4. シークレットの設定
+#### 3-4. シークレットの設定
 
 > **🔐 重要**: 認証方式によって格納するシークレットが異なります。
 
@@ -226,9 +224,9 @@ az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-SUBSCRIPTION-I
 # GitHub PATを格納
 az keyvault secret set --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --value "<your-github-pat>"
 
-# ACR認証情報を格納（Step 00.5完了時）
+# ACR認証情報を格納（Step 01完了時）
 # Option 1: Managed Identity（推奨）- Key Vaultへの格納は不要
-# → Step 03でManaged Identity作成とACRへの権限付与を実施
+# → Step 04でManaged Identity作成とACRへの権限付与を実施
 
 # Option 2: ACR Admin User（テスト環境のみ）
 # $ACR_NAME = "acrinternalrag$ENV_NAME"
@@ -272,19 +270,19 @@ az keyvault secret list `
 
 </details>
 
-詳細な手順は **[Step 02 README - シークレットの設定](../bicep/step02-keyvault/README.md#シークレットの設定)** を参照してください。
+詳細な手順は **[Step 03 README - シークレットの設定](../bicep/step03-keyvault/README.md#シークレットの設定)** を参照してください。
 
 **所要時間**: 約5-7分
 
-**詳細**: [Step 02 README](../bicep/step02-keyvault/README.md)
+**詳細**: [Step 03 README](../bicep/step03-keyvault/README.md)
 
 ---
 
-### Step 03: GitHub Actions Workflowの構築
+### Step 04: GitHub Actions Workflowの構築
 
 **学習内容**: GitHub Actions、Self-hosted Runner、CI/CDパイプライン、OIDC認証
 
-> **📦 重要**: Step 03では、実際のアプリケーションコードとWorkflowファイルは [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) を使用することを推奨します。
+> **📦 重要**: Step 04では、実際のアプリケーションコードとWorkflowファイルは [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) を使用することを推奨します。
 
 > **🔐 認証方式の変更**: GitHub ActionsからAzureへの認証に**Federated Identity (OIDC)**を使用します。従来のClient Secret方式より安全で、長期的なシークレット管理が不要です。
 
@@ -302,7 +300,7 @@ az keyvault secret list `
    
    または
    
-   🔗 **[Step 03 README - GitHub Secretsの設定](../bicep/step03-github-actions/README.md#2-github-secretsの設定)** を参照
+   🔗 **[Step 04 README - GitHub Secretsの設定](../bicep/step04-github-actions/README.md#2-github-secretsの設定)** を参照
 
 3. **サンプルリポジトリのガイドに従う**
    - [Step 1: 環境準備](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step01-setup-environment.md)
@@ -321,16 +319,16 @@ cd <your-app-repo>
 
 **GitHub Secrets設定**
 
-🔗 **[Step 03 README - GitHub Secretsの設定](../bicep/step03-github-actions/README.md#2-github-secretsの設定)** を参照
+🔗 **[Step 04 README - GitHub Secretsの設定](../bicep/step04-github-actions/README.md#2-github-secretsの設定)** を参照
 
 **Workflowファイル作成**
 
 サンプルリポジトリの `.github/workflows/deploy.yml` を参考にしてください。
-詳細は [Step 03 README - 参考: Workflowファイルの詳細解説](../bicep/step03-github-actions/README.md#📝-参考-workflowファイルの詳細解説) を参照してください。
+詳細は [Step 04 README - 参考: Workflowファイルの詳細解説](../bicep/step04-github-actions/README.md#📝-参考-workflowファイルの詳細解説) を参照してください。
 
 **所要時間**: 約10-15分（初回デプロイ含む）
 
-**詳細**: [Step 03 README](../bicep/step03-github-actions/README.md)
+**詳細**: [Step 04 README](../bicep/step04-github-actions/README.md)
 
 ---
 

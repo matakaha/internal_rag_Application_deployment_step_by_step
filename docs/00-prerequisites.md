@@ -74,7 +74,7 @@ az bicep version
 az bicep upgrade
 ```
 
-#### Docker Desktop (Step 00.5使用時)
+#### Docker Desktop (Step 01使用時)
 
 Azure Container Registry (ACR) でRunnerイメージをビルドする場合に必要です。
 

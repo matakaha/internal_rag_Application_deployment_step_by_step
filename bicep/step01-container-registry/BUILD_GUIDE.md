@@ -6,7 +6,7 @@
 
 - Azure CLIがインストールされていること
 - Docker Desktop または Podman がインストールされていること
-- Azure Container Registry が作成されていること（Step 00.5のBicepデプロイ完了）
+- Azure Container Registry が作成されていること（Step 01のBicepデプロイ完了）
 
 ## 使用方法
 

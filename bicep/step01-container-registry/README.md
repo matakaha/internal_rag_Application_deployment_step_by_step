@@ -1,4 +1,4 @@
-# Step 00.5: Azure Container Registryの構築
+# Step 01: Azure Container Registryの構築
 
 このステップでは、GitHub Actions Self-hosted Runner用のコンテナーイメージを格納するAzure Container Registry (ACR)を構築します。
 
@@ -102,8 +102,8 @@ param enableAdminUser = false  // Managed Identity推奨、テスト時のみtru
 ### 2. Azure Container Registryのデプロイ
 
 ```powershell
-# Step 00.5ディレクトリに移動
-cd bicep/step00.5-container-registry
+# Step 01ディレクトリに移動
+cd bicep/step01-container-registry
 
 # デプロイ実行
 az deployment group create `
@@ -579,9 +579,9 @@ COPY --from=build /app /app  # 必要なファイルのみコピー
 
 ACRとRunnerイメージが完成したら、次のステップに進みましょう:
 
-- [Step 01: Container Instance Subnetの構築](../step01-runner-subnet/README.md)
-- [Step 02: Key Vaultの構築](../step02-keyvault/README.md) - ACR認証情報の追加
-- [Step 03: GitHub Actionsの設定](../step03-github-actions/README.md) - ACRイメージの利用
+- [Step 02: Container Instance Subnetの構築](../step02-runner-subnet/README.md)
+- [Step 03: Key Vaultの構築](../step03-keyvault/README.md) - ACR認証情報の追加
+- [Step 04: GitHub Actionsの設定](../step04-github-actions/README.md) - ACRイメージの利用
 - [デプロイガイドに戻る](../../docs/deployment-guide.md)
 
 ## 参考リンク

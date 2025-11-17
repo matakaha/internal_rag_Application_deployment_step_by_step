@@ -1,4 +1,4 @@
-# Step 02: Key Vaultの構築
+# Step 03: Key Vaultの構築
 
 このステップでは、デプロイ用認証情報を安全に管理するKey Vaultを構築します。
 
@@ -21,7 +21,7 @@
 
 ## 前提条件
 
-- Step 01が完了していること
+- Step 01, 02が完了していること
 - 自分のオブジェクトIDを取得していること
 
 ### オブジェクトIDの取得
@@ -58,12 +58,12 @@ param adminObjectId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
 ### 2. デプロイの実行
 
 ```powershell
-# 環境変数の設定（Step 01で設定済みの場合はスキップ可）
+# 環境変数の設定(Step 01で設定済みの場合はスキップ可)
 $RESOURCE_GROUP = "rg-internal-rag-dev"
 $ENV_NAME = "dev"
 
-# Step 02ディレクトリに移動
-cd bicep/step02-keyvault
+# Step 03ディレクトリに移動
+cd bicep/step03-keyvault
 
 # デプロイ実行
 az deployment group create `
@@ -317,15 +317,15 @@ az keyvault secret set `
 
 > **💡 ヒント**: GitHub PATは、前提条件のタスク2で作成したPersonal Access Tokenです。
 
-### 4. Azure Container Registry (ACR) 認証情報の格納 (Step 00.5完了時)
+### 4. Azure Container Registry (ACR) 認証情報の格納 (Step 01完了時)
 
-[Step 00.5: Azure Container Registryの構築](../step00.5-container-registry/README.md)を完了している場合は、ACRからコンテナーイメージをプルするための認証情報を格納します。
+[Step 01: Azure Container Registryの構築](../step01-container-registry/README.md)を完了している場合は、ACRからコンテナーイメージをプルするための認証情報を格納します。
 
 #### 方法1: Managed Identity利用（推奨）
 
 Container InstanceにManaged Identityを付与し、ACRへのプル権限を与える方式です。Key Vaultへのシークレット格納は**不要**です。
 
-**手順はStep 03で実施します。**
+**手順はStep 04で実施します。**
 
 #### 方法2: ACR Admin Userを利用（テスト・開発環境のみ）
 
@@ -629,7 +629,7 @@ Key Vaultが完成したら、次のステップに進みましょう:
 
 ### オプション2: 独自アプリケーションを開発
 
-- [Step 03: GitHub Actions Workflowの構築](../step03-github-actions/README.md) - Workflow設定の詳細
+- [Step 04: GitHub Actions Workflowの構築](../step04-github-actions/README.md) - Workflow設定の詳細
 - [デプロイガイド](../../docs/deployment-guide.md) - 全体の流れ
 
 ## 参考リンク

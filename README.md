@@ -21,17 +21,24 @@ GitHub ActionsでAzure閉域環境（vNet統合済Web Apps）へCI/CDデプロ�
 │          Azure Virtual Network (10.0.0.0/16)               │
 │                                                             │
 │  ┌──────────────────┐     ┌──────────────────┐            │
-│  │   Key Vault      │     │  Web Apps        │            │
-│  │  (認証情報管理)   │     │  (vNet統合)      │            │
+│  │ Container Registry│     │   Key Vault      │            │
+│  │   (ACR + PE)     │     │  (認証情報管理)   │            │
 │  └────────┬─────────┘     └────────┬─────────┘            │
 │           │                        │                       │
-│           │ Private Endpoint       │ vNet Integration      │
+│           │ Private Endpoint       │ Private Endpoint      │
 │           │                        │                       │
 │  ┌────────┴────────────────────────┴─────────┐            │
-│  │  ┌──────────────────────────────────────────────────────────┐
-│  │       Container Instance Subnet (10.0.6.0/24)            │            │
+│  │  Container Instance Subnet (10.0.6.0/24)  │            │
 │  │    (Self-hosted GitHub Actions Runner)    │            │
-│  └───────────────────────────────────────────┘            │
+│  │    ← ACRからイメージプル（完全閉域）      │            │
+│  └───────────────┬───────────────────────────┘            │
+│                  │                                         │
+│                  │ vNet Integration                        │
+│                  │                                         │
+│           ┌──────┴─────────┐                              │
+│           │  Web Apps      │                              │
+│           │  (vNet統合)    │                              │
+│           └────────────────┘                              │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
                        │
@@ -73,7 +80,7 @@ $RESOURCE_GROUP = "rg-internal-rag-dev"
 $LOCATION = "japaneast"
 
 # 3. Step 01から順番にデプロイ
-cd bicep/step01-runner-subnet
+cd bicep/step01-container-registry
 az deployment group create `
   --resource-group $RESOURCE_GROUP `
   --template-file main.bicep `
@@ -84,18 +91,23 @@ az deployment group create `
 
 ## 📖 学習ステップ
 
-### Step 01: Self-hosted Runner用Subnet追加 [→](bicep/step01-runner-subnet/)
+### Step 01: Azure Container Registryの構築 [→](bicep/step01-container-registry/)
+- ACRの作成とPrivate Endpoint統合
+- GitHub Actions RunnerのDockerイメージビルド
+- 完全閉域環境でのコンテナー実行
+
+### Step 02: Self-hosted Runner用Subnet追加 [→](bicep/step02-runner-subnet/)
 - Container Instance用サブネット追加
 - NSG設定
 - 既存vNetへの統合
 
-### Step 02: Key Vault構築 [→](bicep/step02-keyvault/)
+### Step 03: Key Vault構築 [→](bicep/step03-keyvault/)
 - Key Vaultの作成
 - Private Endpoint設定
 - アクセスポリシー設定
 - デプロイ用認証情報の格納
 
-### Step 03: GitHub Actions Workflow [→](bicep/step03-github-actions/)
+### Step 04: GitHub Actions Workflow [→](bicep/step04-github-actions/)
 - GitHub Secretsの設定方法
 - サンプルアプリケーションリポジトリの利用ガイド
 - Self-hosted Runnerの仕組み理解
@@ -114,15 +126,18 @@ az deployment group create `
 
 ## 💰 コスト
 
-このアーキテクチャの月額概算コスト: **¥5,000〜10,000** (既存環境に追加)
+このアーキテクチャの月額概算コスト: **¥7,000〜12,000** (既存環境に追加)
 
 | リソース | SKU/プラン | 月額概算 |
 |---------|-----------|---------|
+| Azure Container Registry | Premium | ¥6,000 |
 | Key Vault | Standard | ¥500 |
 | Container Instances | 1vCPU/1.5GB (都度起動) | ¥1,000〜3,000 |
-| Private Endpoint | 2個 | ¥2,000 |
+| Private Endpoint | 3個 | ¥3,000 |
 
-> **💡 ヒント**: Container Instancesは使用時のみ課金されます。デプロイ頻度に応じてコストが変動します。
+> **💡 ヒント**: 
+> - Container Instancesは使用時のみ課金されます。デプロイ頻度に応じてコストが変動します。
+> - ACRのPremium SKUはPrivate Link対応に必須ですが、完全閉域環境を実現できます。
 
 ## 🛠️ トラブルシューティング
 

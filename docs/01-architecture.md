@@ -38,7 +38,7 @@
 │               Azure Virtual Network (10.0.0.0/16)                        │
 │                                                                           │
 │  ┌───────────────────────────────────────────────────────────────┐       │
-│  │      Azure Container Registry (ACR) - Step 00.5              │       │
+│  │      Azure Container Registry (ACR) - Step 01              │       │
 │  │                                                                │       │
 │  │  - 事前ビルド済GitHub Runnerイメージ                          │       │
 │  │  - Private Endpoint経由でアクセス                             │       │
@@ -121,7 +121,7 @@ sequenceDiagram
 
 ### 2. 詳細ステップ
 
-#### Step 0: 事前準備（Step 00.5）
+#### Step 1: Azure Container Registry (ACR)の作成
 - Azure Container Registry (ACR)の作成
 - GitHub Actions RunnerのDockerイメージをビルド
 - イメージをACRにプッシュ
@@ -129,33 +129,37 @@ sequenceDiagram
 
 > **💡 推奨理由**: 事前にイメージをビルドすることで、Container Instance起動時のインターネット接続を不要にし、完全閉域環境を実現します。
 
-#### Step 1: Workflow起動トリガー
+#### Step 2: Workflow起動トリガー
 - `git push` または手動トリガー
 - GitHub Actionsワークフローが起動
 
-#### Step 2: Container Instance起動
+#### Step 2: Workflow起動トリガー
+- `git push` または手動トリガー
+- GitHub Actionsワークフローが起動
+
+#### Step 3: Container Instance起動
 - Azure CLIでContainer Instance作成
 - vNet統合済サブネットに配置
 - ACRからRunnerイメージをプル（Private Endpoint経由、インターネット接続不要）
 - GitHub Runnerを自動起動・登録
 
-#### Step 3: シークレット取得
+#### Step 4: シークレット取得
 - Container InstanceからKey Vaultへアクセス（Private Endpoint経由）
 - デプロイに必要な認証情報を取得
 - 環境変数として設定
 
-#### Step 4: ビルド・デプロイ
+#### Step 5: ビルド・デプロイ
 - アプリケーションのビルド
 - Web Appsへのデプロイ（vNet経由）
 - デプロイ完了確認
 
-#### Step 5: クリーンアップ
+#### Step 6: クリーンアップ
 - ジョブ完了後、Container Instanceを削除
 - コスト最適化
 
 ## コンポーネント詳細
 
-### Azure Container Registry (ACR) - Step 00.5
+### Azure Container Registry (ACR) - Step 01
 
 #### 概要
 - **SKU**: Premium（Private Link対応のため必須）
@@ -359,4 +363,4 @@ sequenceDiagram
 アーキテクチャを理解したら、実際にデプロイを開始しましょう:
 
 - [デプロイガイド](deployment-guide.md)
-- [Step 01: Container Instance Subnet追加](../bicep/step01-runner-subnet/README.md)
+- [Step 02: Container Instance Subnet追加](../bicep/step02-runner-subnet/README.md)

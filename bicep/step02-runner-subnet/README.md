@@ -1,4 +1,4 @@
-# Step 01: Container Instance Subnetの構築
+# Step 02: Container Instance Subnetの構築
 
 このステップでは、Self-hosted GitHub Actions Runner用のSubnetを既存のVNetに追加します。
 
@@ -20,7 +20,8 @@
 
 ## 前提条件
 
-- [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step) Step 01が完了していること
+- [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step) が完了していること
+- Step 01 (Azure Container Registry) が完了していること（推奨）
 - Virtual Network `vnet-internal-rag-<環境名>` が存在すること
 
 確認方法:
@@ -78,8 +79,8 @@ snet-dns-resolver       10.0.5.0/28
 ### 3. デプロイの実行
 
 ```powershell
-# Step 01ディレクトリに移動
-cd bicep/step01-runner-subnet
+# Step 02ディレクトリに移動
+cd bicep/step02-runner-subnet
 
 # デプロイ実行
 az deployment group create `
@@ -144,7 +145,7 @@ serviceEndpoints: [
 - Private Endpointの代替として使用可能
 - コスト削減に有効
 
-> **Note (ACR利用時)**: Azure Container Registry (ACR) からのイメージプルは、ACRのPrivate Endpoint経由で行われます。Container Instance SubnetからACRへの直接的なService Endpointは不要です。ACRはPrivate Endpoint Subnet (`snet-private-endpoints`) に配置されたPrivate Endpointを経由してアクセスされます（Step 00.5参照）。
+> **Note (ACR利用時)**: Azure Container Registry (ACR) からのイメージプルは、ACRのPrivate Endpoint経由で行われます。Container Instance SubnetからACRへの直接的なService Endpointは不要です。ACRはPrivate Endpoint Subnet (`snet-private-endpoints`) に配置されたPrivate Endpointを経由してアクセスされます（Step 01参照）。
 
 ### Network Security Group
 
@@ -292,11 +293,8 @@ snet-container-instances  10.0.6.0/24      Enabled                           Mic
 
 Container Instance用Subnetが完成したら、次のステップに進みましょう:
 
-- [Step 00.5: Azure Container Registryの構築](../step00.5-container-registry/README.md) - Runnerイメージの事前ビルド（推奨）
-- [Step 02: Key Vaultの構築](../step02-keyvault/README.md)
+- [Step 03: Key Vaultの構築](../step03-keyvault/README.md)
 - [デプロイガイドに戻る](../../docs/deployment-guide.md)
-
-> **推奨**: 閉域環境でのセキュリティと安定性を確保するため、先にStep 00.5でACRとRunnerイメージを準備することを強く推奨します。
 
 ## 参考リンク
 
