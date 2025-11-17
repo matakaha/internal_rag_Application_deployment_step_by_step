@@ -144,6 +144,8 @@ serviceEndpoints: [
 - Private Endpointの代替として使用可能
 - コスト削減に有効
 
+> **Note (ACR利用時)**: Azure Container Registry (ACR) からのイメージプルは、ACRのPrivate Endpoint経由で行われます。Container Instance SubnetからACRへの直接的なService Endpointは不要です。ACRはPrivate Endpoint Subnet (`snet-private-endpoints`) に配置されたPrivate Endpointを経由してアクセスされます（Step 00.5参照）。
+
 ### Network Security Group
 
 #### インバウンドルール
@@ -186,6 +188,11 @@ serviceEndpoints: [
 - GitHubへのアクセスに必要（Runner登録、コード取得）
 - Azure API（Container Registry、Web Apps等）へのアクセス
 - HTTPS (443)のみ許可でセキュリティ確保
+
+> **Note (ACR利用時の注意)**: 
+> - ACR Private Endpoint経由のイメージプルは、vNet内部通信として扱われます
+> - GitHubへのRunner登録とジョブ通信には引き続きHTTPS (443)のアウトバウンド許可が必要です
+> - ACRからのイメージプルにはインターネットアクセスは不要です（完全閉域）
 
 ## 検証
 
@@ -285,8 +292,11 @@ snet-container-instances  10.0.6.0/24      Enabled                           Mic
 
 Container Instance用Subnetが完成したら、次のステップに進みましょう:
 
+- [Step 00.5: Azure Container Registryの構築](../step00.5-container-registry/README.md) - Runnerイメージの事前ビルド（推奨）
 - [Step 02: Key Vaultの構築](../step02-keyvault/README.md)
 - [デプロイガイドに戻る](../../docs/deployment-guide.md)
+
+> **推奨**: 閉域環境でのセキュリティと安定性を確保するため、先にStep 00.5でACRとRunnerイメージを準備することを強く推奨します。
 
 ## 参考リンク
 

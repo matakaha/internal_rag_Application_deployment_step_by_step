@@ -65,17 +65,36 @@ gh repo create <org>/<repo-name> --private --source=. --remote=origin --push
 
 ### 2. GitHub Secretsの設定
 
+> **🔐 重要な変更**: GitHub ActionsからAzureへの認証方式が**Federated Identity (OIDC)**に変更されました。これにより長期的なシークレット(Client Secret)を管理する必要がなくなり、セキュリティが向上します。
+
 #### 必要なSecrets
+
+**OIDC認証方式 (推奨)**:
 
 | Secret名 | 内容 | 取得方法 |
 |---------|------|---------|
-| `AZURE_CREDENTIALS` | サービスプリンシパル情報 | Step 02で格納したKey Vaultから |
+| `AZURE_CLIENT_ID` | アプリケーション(クライアント)ID | 前提条件で作成したサービスプリンシパル |
+| `AZURE_TENANT_ID` | ディレクトリ(テナント)ID | Azureサブスクリプション情報 |
+| `AZURE_SUBSCRIPTION_ID` | サブスクリプションID | Azureサブスクリプション情報 |
 | `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
 | `GH_PAT` | Personal Access Token | GitHub Settings |
 
+**従来のClient Secret方式 (非推奨)**:
+
+<details>
+<summary>従来方式のSecrets一覧</summary>
+
+| Secret名 | 内容 | 取得方法 |
+|---------|------|---------|
+| `AZURE_CREDENTIALS` | サービスプリンシパル情報 (JSON) | Step 02で格納したKey Vaultから |
+| `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
+| `GH_PAT` | Personal Access Token | GitHub Settings |
+
+</details>
+
 #### Secretsの設定方法
 
-##### 方法1: GitHub CLI使用（推奨）
+##### 方法1: OIDC認証 + GitHub CLI使用（最新・推奨）
 
 > **📋 前提条件**: GitHub CLIがインストール済みであること。インストールされていない場合は[方法2](#方法2-github-web-ui手動設定cli不要)を使用してください。
 
@@ -89,6 +108,29 @@ gh auth login
 ```
 
 **Secretsの設定**:
+```powershell
+# OIDC認証用の情報を設定
+# (前提条件「3. Azure サービスプリンシパルとFederated Credential作成」で取得した値を使用)
+
+gh secret set AZURE_CLIENT_ID --body $CLIENT_ID
+gh secret set AZURE_TENANT_ID --body $TENANT_ID
+gh secret set AZURE_SUBSCRIPTION_ID --body $SUBSCRIPTION_ID
+gh secret set KEY_VAULT_NAME --body $KEY_VAULT_NAME
+
+# GitHub PATをKey Vaultから取得して設定
+$GITHUB_PAT = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --query value -o tsv
+gh secret set GH_PAT --body $GITHUB_PAT
+```
+
+> **💡 ヒント**: 
+> - OIDC方式では**CLIENT_SECRET (パスワード)は不要**です
+> - Federated Credentialが正しく設定されていれば、GitHub Actionsワークフロー実行時に一時的なトークンが自動発行されます
+
+**従来のClient Secret方式の場合 (非推奨)**:
+
+<details>
+<summary>従来方式のGitHub Secrets設定手順</summary>
+
 ```powershell
 # 1. Key Vaultからサービスプリンシパル情報を取得
 $KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
@@ -115,11 +157,61 @@ $GITHUB_PAT = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "GITHU
 gh secret set GH_PAT --body $GITHUB_PAT
 ```
 
+</details>
+
 > **💡 ヒント**: すべての認証情報をKey Vaultから取得するため、ローカルに機密情報を残しません。
 
 ##### 方法2: GitHub Web UI（手動設定、CLI不要）
 
 GitHub CLIをインストールしたくない場合は、以下の手順でWebブラウザから設定できます。
+
+**OIDC認証方式の場合 (推奨)**:
+
+**ステップ1: 必要な値を取得・表示**
+
+```powershell
+# CLIENT_ID, TENANT_ID, SUBSCRIPTION_IDを表示
+# (前提条件で作成済みの変数を使用)
+Write-Host "\n=== AZURE_CLIENT_ID (以下をコピー) ===" -ForegroundColor Green
+Write-Host $CLIENT_ID
+
+Write-Host "\n=== AZURE_TENANT_ID (以下をコピー) ===" -ForegroundColor Green
+Write-Host $TENANT_ID
+
+Write-Host "\n=== AZURE_SUBSCRIPTION_ID (以下をコピー) ===" -ForegroundColor Green
+Write-Host $SUBSCRIPTION_ID
+
+Write-Host "\n=== KEY_VAULT_NAME (以下をコピー) ===" -ForegroundColor Green
+$KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
+Write-Host $KEY_VAULT_NAME
+
+# GitHub PATをKey Vaultから取得
+$GITHUB_PAT = az keyvault secret show --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --query value -o tsv
+Write-Host "\n=== GH_PAT (以下をコピー) ===" -ForegroundColor Green
+Write-Host $GITHUB_PAT
+```
+
+**ステップ2: GitHub Web UIでSecretsを設定**
+
+1. GitHubリポジトリを開く
+2. **Settings** → **Secrets and variables** → **Actions** に移動
+3. **New repository secret** をクリック
+4. 以下の5つのSecretを順番に作成:
+
+| Name | Secret (上記で表示された値をコピー&ペースト) |
+|------|---------------------------------------------|
+| `AZURE_CLIENT_ID` | `$CLIENT_ID`の値 |
+| `AZURE_TENANT_ID` | `$TENANT_ID`の値 |
+| `AZURE_SUBSCRIPTION_ID` | `$SUBSCRIPTION_ID`の値 |
+| `KEY_VAULT_NAME` | `kv-gh-runner-dev` など |
+| `GH_PAT` | PATの値 |
+
+5. 各Secretで **Add secret** をクリック
+
+**従来のClient Secret方式の場合 (非推奨)**:
+
+<details>
+<summary>従来方式のWeb UI設定手順</summary>
 
 **ステップ1: Key Vaultから値を取得して表示**
 
@@ -168,13 +260,18 @@ Write-Host $GITHUB_PAT
 
 5. 各Secretで **Add secret** をクリック
 
+</details>
+
 **確認**:
 ```powershell
 # GitHub CLIがある場合のみ確認可能
 gh secret list
 ```
 
-または、GitHub Web UIで Settings → Secrets and variables → Actions を開いて、3つのSecretが表示されることを確認してください。
+または、GitHub Web UIで Settings → Secrets and variables → Actions を開いて、必要なSecretsが表示されることを確認してください。
+
+**OIDC方式の場合**: 5つのSecret (AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, KEY_VAULT_NAME, GH_PAT)  
+**従来方式の場合**: 3つのSecret (AZURE_CREDENTIALS, KEY_VAULT_NAME, GH_PAT)
 
 ---
 
@@ -270,22 +367,46 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/actions/runners/registration-token" \
             | jq -r .token)
 
-          # Container Instance作成
+          # ACRログインサーバーを取得
+          ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+
+          # Container Instance作成（ACRイメージを使用）
+          # Option 1: Managed Identity使用（推奨）
           az container create \
             --resource-group $RESOURCE_GROUP \
             --name $CONTAINER_GROUP_NAME \
-            --image mcr.microsoft.com/azure-cli:latest \
+            --image ${ACR_LOGIN_SERVER}/github-runner:latest \
+            --acr-identity $MANAGED_IDENTITY_ID \
             --vnet $VNET_NAME \
             --subnet $SUBNET_NAME \
             --location $LOCATION \
             --cpu 2 \
             --memory 4 \
             --restart-policy Never \
+            --assign-identity $MANAGED_IDENTITY_ID \
             --environment-variables \
-              RUNNER_NAME=$RUNNER_NAME \
-              RUNNER_TOKEN=$RUNNER_TOKEN \
-              GITHUB_REPOSITORY=${{ github.repository }} \
-            --command-line "/bin/bash -c 'curl -o actions-runner-linux-x64-2.311.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-linux-x64-2.311.0.tar.gz && tar xzf ./actions-runner-linux-x64-2.311.0.tar.gz && ./config.sh --url https://github.com/${{ github.repository }} --token $RUNNER_TOKEN --name $RUNNER_NAME --work _work --labels self-hosted,azure,vnet && ./run.sh'"
+              GITHUB_TOKEN=$GITHUB_TOKEN \
+              GITHUB_REPOSITORY=${{ github.repository }}
+
+          # Option 2: ACR Admin User使用（非推奨、テスト環境のみ）
+          # ACR_USERNAME=$(az keyvault secret show --vault-name ${{ secrets.KEY_VAULT_NAME }} --name ACR-USERNAME --query value -o tsv)
+          # ACR_PASSWORD=$(az keyvault secret show --vault-name ${{ secrets.KEY_VAULT_NAME }} --name ACR-PASSWORD --query value -o tsv)
+          # az container create \
+          #   --resource-group $RESOURCE_GROUP \
+          #   --name $CONTAINER_GROUP_NAME \
+          #   --image ${ACR_LOGIN_SERVER}/github-runner:latest \
+          #   --registry-login-server $ACR_LOGIN_SERVER \
+          #   --registry-username $ACR_USERNAME \
+          #   --registry-password $ACR_PASSWORD \
+          #   --vnet $VNET_NAME \
+          #   --subnet $SUBNET_NAME \
+          #   --location $LOCATION \
+          #   --cpu 2 \
+          #   --memory 4 \
+          #   --restart-policy Never \
+          #   --environment-variables \
+          #     GITHUB_TOKEN=$GITHUB_TOKEN \
+          #     GITHUB_REPOSITORY=${{ github.repository }}
 
           # Runner起動待機
           echo "Waiting for runner to be ready..."
@@ -380,6 +501,112 @@ jobs:
 ```
 
 ## Workflowの詳細解説
+
+### 重要な変更: Azure Container Registry (ACR) の利用
+
+従来の方式では、Container Instance起動時にインターネット経由でGitHub Runnerイメージをダウンロードしていました。新方式では、事前にACRにビルドしたRunnerイメージを使用することで、完全閉域環境でのRunner起動を実現します。
+
+#### 従来方式 vs 新方式
+
+| 項目 | 従来方式 | 新方式 (ACR利用) |
+|------|---------|-----------------|
+| **イメージ取得元** | インターネット (GitHub/MCR) | Azure Container Registry |
+| **ネットワーク** | インターネット接続必須 | 完全閉域 (Private Endpoint) |
+| **起動速度** | 遅い (数分) | 高速 (数十秒) |
+| **セキュリティ** | 外部依存あり | 完全制御可能 |
+| **安定性** | 外部障害の影響あり | 内部ネットワークのみ |
+
+#### ACR認証方式の選択
+
+**Option 1: Managed Identity (推奨)**
+
+```yaml
+az container create \
+  --image ${ACR_LOGIN_SERVER}/github-runner:latest \
+  --acr-identity $MANAGED_IDENTITY_ID \
+  --assign-identity $MANAGED_IDENTITY_ID \
+  ...
+```
+
+**メリット**:
+- ✅ パスワード管理不要
+- ✅ 自動ローテーション
+- ✅ 最高のセキュリティ
+
+**前提条件**:
+1. User-Assigned Managed Identityの作成
+2. ACRへの`AcrPull`ロール割り当て
+
+**セットアップ手順**:
+
+```powershell
+# 1. User-Assigned Managed Identity作成
+$IDENTITY_NAME = "id-acr-pull-$ENV_NAME"
+az identity create `
+  --resource-group $RESOURCE_GROUP `
+  --name $IDENTITY_NAME
+
+# 2. Managed Identity IDを取得
+$MANAGED_IDENTITY_ID = az identity show `
+  --resource-group $RESOURCE_GROUP `
+  --name $IDENTITY_NAME `
+  --query id `
+  --output tsv
+
+# 3. ACRリソースIDを取得
+$ACR_RESOURCE_ID = az acr show `
+  --name $ACR_NAME `
+  --query id `
+  --output tsv
+
+# 4. Managed IdentityにACR Pull権限を付与
+az role assignment create `
+  --assignee $MANAGED_IDENTITY_ID `
+  --role "AcrPull" `
+  --scope $ACR_RESOURCE_ID
+
+# 5. GitHub Secretsに追加
+gh secret set MANAGED_IDENTITY_ID --body $MANAGED_IDENTITY_ID
+```
+
+**Option 2: ACR Admin User (非推奨、テスト環境のみ)**
+
+```yaml
+az container create \
+  --image ${ACR_LOGIN_SERVER}/github-runner:latest \
+  --registry-login-server $ACR_LOGIN_SERVER \
+  --registry-username $ACR_USERNAME \
+  --registry-password $ACR_PASSWORD \
+  ...
+```
+
+**デメリット**:
+- ⚠️ パスワード管理が必要
+- ⚠️ 定期的なローテーションが推奨
+- ⚠️ 本番環境では非推奨
+
+**使用条件**: ACR作成時に`enableAdminUser: true`を設定している場合のみ
+
+#### ACRイメージのバージョン管理
+
+**推奨タグ戦略**:
+
+```powershell
+# 開発環境: latestタグを使用（常に最新）
+--image ${ACR_LOGIN_SERVER}/github-runner:latest
+
+# 本番環境: 固定バージョンを使用（安定性重視）
+--image ${ACR_LOGIN_SERVER}/github-runner:1.0.0
+```
+
+**イメージ更新フロー**:
+1. Dockerfileを修正
+2. ローカルでビルド
+3. テスト
+4. ACRにプッシュ（新バージョンタグ付与）
+5. Workflowファイルでバージョン指定を更新
+
+詳細は[Step 00.5: Azure Container Registry](../step00.5-container-registry/README.md)を参照してください。
 
 ### Job 1: setup-runner
 

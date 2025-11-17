@@ -37,13 +37,22 @@
 ┌───────────▼──────────────────────────────────────────────────────────────┐
 │               Azure Virtual Network (10.0.0.0/16)                        │
 │                                                                           │
-│  ┌──────────────────────────────────────────────────────────┐       │
+│  ┌───────────────────────────────────────────────────────────────┐       │
+│  │      Azure Container Registry (ACR) - Step 00.5              │       │
+│  │                                                                │       │
+│  │  - 事前ビルド済GitHub Runnerイメージ                          │       │
+│  │  - Private Endpoint経由でアクセス                             │       │
+│  │  - インターネット接続不要（完全閉域）                          │       │
+│  └───────────────────┬───────────────────────────────────────────┘       │
+│                      │ イメージプル (Private Endpoint経由)              │
+│  ┌──────────────────▼───────────────────────────────────────┐           │
 │  │          Container Instance Subnet (10.0.6.0/24)             │       │
 │  │                                                                │       │
 │  │  ┌─────────────────────────────────────────────────────┐    │       │
 │  │  │  Azure Container Instance                           │    │       │
 │  │  │  (Self-hosted GitHub Actions Runner)                │    │       │
 │  │  │                                                       │    │       │
+│  │  │  - ACRからRunnerイメージをプル (閉域)              │    │       │
 │  │  │  - GitHub Runner登録                                │    │       │
 │  │  │  - Key Vaultからシークレット取得                    │    │       │
 │  │  │  - アプリケーションビルド                            │    │       │
@@ -70,6 +79,7 @@
 │  │            Private Endpoint Subnet (10.0.1.0/24)            │       │
 │  │                                                               │       │
 │  │  - Key Vault Private Endpoint                                │       │
+│  │  - ACR Private Endpoint (新規追加)                           │       │
 │  │  - その他サービスのPrivate Endpoint                          │       │
 │  └───────────────────────────────────────────────────────────────┘       │
 │                                                                           │
@@ -89,13 +99,16 @@
 sequenceDiagram
     participant Dev as 開発者
     participant GH as GitHub
+    participant ACR as Container Registry
     participant ACI as Container Instance
     participant KV as Key Vault
     participant App as Web Apps
 
     Dev->>GH: git push
     GH->>GH: Workflow開始
-    GH->>ACI: Container Instance起動
+    GH->>ACI: Container Instance起動リクエスト
+    ACI->>ACR: Runnerイメージをプル (Private Endpoint経由)
+    ACR-->>ACI: イメージ返却
     ACI->>GH: Runner登録
     ACI->>KV: デプロイ用シークレット取得
     KV-->>ACI: 認証情報返却
@@ -108,6 +121,14 @@ sequenceDiagram
 
 ### 2. 詳細ステップ
 
+#### Step 0: 事前準備（Step 00.5）
+- Azure Container Registry (ACR)の作成
+- GitHub Actions RunnerのDockerイメージをビルド
+- イメージをACRにプッシュ
+- ACR Private Endpointの設定
+
+> **💡 推奨理由**: 事前にイメージをビルドすることで、Container Instance起動時のインターネット接続を不要にし、完全閉域環境を実現します。
+
 #### Step 1: Workflow起動トリガー
 - `git push` または手動トリガー
 - GitHub Actionsワークフローが起動
@@ -115,7 +136,8 @@ sequenceDiagram
 #### Step 2: Container Instance起動
 - Azure CLIでContainer Instance作成
 - vNet統合済サブネットに配置
-- GitHub Runnerをインストール・登録
+- ACRからRunnerイメージをプル（Private Endpoint経由、インターネット接続不要）
+- GitHub Runnerを自動起動・登録
 
 #### Step 3: シークレット取得
 - Container InstanceからKey Vaultへアクセス（Private Endpoint経由）
@@ -132,6 +154,29 @@ sequenceDiagram
 - コスト最適化
 
 ## コンポーネント詳細
+
+### Azure Container Registry (ACR) - Step 00.5
+
+#### 概要
+- **SKU**: Premium（Private Link対応のため必須）
+- **用途**: GitHub Actions RunnerのDockerイメージ格納
+- **アクセス**: Private Endpoint経由のみ（パブリックアクセス無効）
+
+#### セキュリティ
+- Private Endpoint統合でvNet内からのみアクセス可能
+- Managed Identity認証推奨
+- イメージスキャン機能で脆弱性検出
+
+#### メリット
+- **完全閉域**: Container Instance起動時にインターネット接続不要
+- **高速起動**: ローカルネットワーク経由でイメージプル
+- **安定性**: 外部サービスの障害影響を排除
+- **バージョン管理**: タグによるイメージバージョン管理
+
+#### イメージ管理
+- **ベースイメージ**: Microsoft公式イメージ使用
+- **タグ戦略**: `latest`（開発）、`1.x.x`（本番）
+- **更新フロー**: ローカルビルド → テスト → ACRプッシュ
 
 ### Container Instance Subnet (新規追加)
 

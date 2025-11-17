@@ -193,9 +193,53 @@ VPN設定の更新が完了するまでの間は、**Azure Cloud Shell**を使�
 
 > **💡 参考**: 詳細なVPN設定手順は [VPN接続セットアップガイド - Step 8 & Step 9](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md#step-8-azure-dns-private-resolver-%E3%81%AE%E4%BD%9C%E6%88%90) を参照してください。
 
-### 1. サービスプリンシパル情報の格納
+### 1. 認証情報の格納
 
-[前提条件 - Azure サービスプリンシパル作成](../../docs/00-prerequisites.md#3-azure-サービスプリンシパル作成)で作成したサービスプリンシパルの情報をKey Vaultに格納します。
+> **🔐 認証方式**: OIDC認証(推奨)と従来のClient Secret方式で格納するシークレットが異なります。
+
+#### OIDC認証方式の場合 (推奨)
+
+[前提条件 - Azure サービスプリンシパルとFederated Credential作成](../../docs/00-prerequisites.md#3-azureサービスプリンシパルとfederated-credential作成)で作成した情報をKey Vaultに格納します。
+
+```powershell
+# Key Vault名
+$KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
+
+# OIDC認証に必要な情報を格納
+# (前提条件で取得した$CLIENT_ID, $TENANT_ID, $SUBSCRIPTION_IDを使用)
+
+# 変数が未定義の場合は、以下のコマンドで再取得できます:
+# $CLIENT_ID = "<your-application-id>"
+# $TENANT_ID = (az account show --query tenantId --output tsv)
+# $SUBSCRIPTION_ID = (az account show --query id --output tsv)
+
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "AZURE-CLIENT-ID" `
+  --value $CLIENT_ID
+
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "AZURE-TENANT-ID" `
+  --value $TENANT_ID
+
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "AZURE-SUBSCRIPTION-ID" `
+  --value $SUBSCRIPTION_ID
+```
+
+> **💡 ヒント**: 
+> - OIDC方式では**CLIENT_SECRET (パスワード)は不要**です
+> - これらの変数は同じPowerShellセッションで保持されます
+> - PowerShellセッションを閉じた場合は、変数が失われるため手動で再設定してください
+
+#### 従来のClient Secret方式の場合 (非推奨)
+
+<details>
+<summary>従来方式のシークレット格納手順</summary>
+
+[前提条件 - Azure サービスプリンシパル作成](../../docs/00-prerequisites.md#3-azureサービスプリンシパルとfederated-credential作成)で作成したサービスプリンシパルの情報をKey Vaultに格納します。
 
 ```powershell
 # Key Vault名
@@ -235,7 +279,8 @@ az keyvault secret set `
 > - 前提条件のコマンドで変数に格納済みの場合は、上記のように変数を使用できます
 > - PowerShellセッションを閉じた場合は、変数が失われるため手動で再設定してください
 > - 手動で値を設定する場合は、コメントアウトされた行のコメントを外して値を入力してください
-```
+
+</details>
 
 ### 2. Web Apps publish profileの格納（オプション）
 
@@ -272,7 +317,99 @@ az keyvault secret set `
 
 > **💡 ヒント**: GitHub PATは、前提条件のタスク2で作成したPersonal Access Tokenです。
 
-### 4. シークレット一覧の確認
+### 4. Azure Container Registry (ACR) 認証情報の格納 (Step 00.5完了時)
+
+[Step 00.5: Azure Container Registryの構築](../step00.5-container-registry/README.md)を完了している場合は、ACRからコンテナーイメージをプルするための認証情報を格納します。
+
+#### 方法1: Managed Identity利用（推奨）
+
+Container InstanceにManaged Identityを付与し、ACRへのプル権限を与える方式です。Key Vaultへのシークレット格納は**不要**です。
+
+**手順はStep 03で実施します。**
+
+#### 方法2: ACR Admin Userを利用（テスト・開発環境のみ）
+
+<details>
+<summary>Admin User方式の手順（本番環境非推奨）</summary>
+
+ACR作成時に`enableAdminUser: true`を設定している場合のみ使用可能です。
+
+```powershell
+# ACR名を環境変数に設定
+$ACR_NAME = "acrinternalrag$ENV_NAME"
+
+# ACR管理者資格情報を取得
+$ACR_USERNAME = az acr credential show --name $ACR_NAME --query username --output tsv
+$ACR_PASSWORD = az acr credential show --name $ACR_NAME --query "passwords[0].value" --output tsv
+
+# Key Vaultに格納
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "ACR-USERNAME" `
+  --value $ACR_USERNAME
+
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "ACR-PASSWORD" `
+  --value $ACR_PASSWORD
+
+# ACR Login Serverも格納（Workflow内で使用）
+$ACR_LOGIN_SERVER = az acr show --name $ACR_NAME --query loginServer --output tsv
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "ACR-LOGIN-SERVER" `
+  --value $ACR_LOGIN_SERVER
+```
+
+> **⚠️ セキュリティ注意**: Admin User方式は管理が容易ですが、本番環境ではManaged Identity方式を強く推奨します。
+
+</details>
+
+#### 方法3: Service Principalを利用
+
+<details>
+<summary>Service Principal方式の手順</summary>
+
+専用のService PrincipalにACRプル権限を付与する方式です。
+
+```powershell
+# ACR名とリソースIDを取得
+$ACR_NAME = "acrinternalrag$ENV_NAME"
+$ACR_RESOURCE_ID = az acr show --name $ACR_NAME --query id --output tsv
+
+# Service Principal作成（ACR専用）
+$SP_NAME = "sp-acr-pull-$ENV_NAME"
+$SP_INFO = az ad sp create-for-rbac `
+  --name $SP_NAME `
+  --role "AcrPull" `
+  --scope $ACR_RESOURCE_ID `
+  --query "{appId:appId, password:password}" `
+  --output json | ConvertFrom-Json
+
+# Key Vaultに格納
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "ACR-SP-APP-ID" `
+  --value $SP_INFO.appId
+
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "ACR-SP-PASSWORD" `
+  --value $SP_INFO.password
+
+# ACR Login Serverも格納
+$ACR_LOGIN_SERVER = az acr show --name $ACR_NAME --query loginServer --output tsv
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "ACR-LOGIN-SERVER" `
+  --value $ACR_LOGIN_SERVER
+```
+
+> **💡 推奨度**: Managed Identity > Service Principal > Admin User
+
+</details>
+
+### 5. シークレット一覧の確認
 
 ```powershell
 # 格納されたシークレットを確認
@@ -283,6 +420,33 @@ az keyvault secret list `
 ```
 
 **期待される出力**:
+
+**OIDC認証方式 + ACR Managed Identity方式の場合**:
+```
+Name                      Enabled
+------------------------  ---------
+AZURE-CLIENT-ID           True
+AZURE-TENANT-ID           True
+AZURE-SUBSCRIPTION-ID     True
+GITHUB-PAT                True
+WEBAPP-PUBLISH-PROFILE    True (オプション)
+```
+
+**OIDC認証方式 + ACR Admin User方式の場合**:
+```
+Name                      Enabled
+------------------------  ---------
+AZURE-CLIENT-ID           True
+AZURE-TENANT-ID           True
+AZURE-SUBSCRIPTION-ID     True
+GITHUB-PAT                True
+WEBAPP-PUBLISH-PROFILE    True (オプション)
+ACR-USERNAME              True
+ACR-PASSWORD              True
+ACR-LOGIN-SERVER          True
+```
+
+**従来のClient Secret方式の場合**:
 ```
 Name                      Enabled
 ------------------------  ---------
@@ -291,7 +455,7 @@ AZURE-CLIENT-SECRET       True
 AZURE-TENANT-ID           True
 AZURE-SUBSCRIPTION-ID     True
 GITHUB-PAT                True
-WEBAPP-PUBLISH-PROFILE    True
+WEBAPP-PUBLISH-PROFILE    True (オプション)
 ```
 
 ## 詳細解説

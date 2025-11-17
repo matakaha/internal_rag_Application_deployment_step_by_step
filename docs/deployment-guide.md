@@ -97,6 +97,72 @@ az network vnet subnet show `
 
 ---
 
+### Step 00.5: Azure Container Registryの構築 (推奨)
+
+**学習内容**: ACR作成、Private Endpoint統合、Dockerイメージビルド、完全閉域環境でのコンテナー実行
+
+> **💡 推奨理由**: 閉域環境でのセキュリティと安定性を確保するため、Container Instance起動時にインターネット経由でイメージをダウンロードするのではなく、事前にACRにビルドしたイメージを使用することを強く推奨します。
+
+#### 0.5-1. ACRのデプロイ
+
+```powershell
+cd bicep/step00.5-container-registry
+
+# パラメータファイルの確認・編集
+notepad parameters.bicepparam
+# acrName をグローバルで一意な名前に変更（例: acrinternalrag<会社名>dev）
+
+# デプロイ
+az deployment group create `
+  --resource-group $RESOURCE_GROUP `
+  --template-file main.bicep `
+  --parameters parameters.bicepparam
+
+# ACR名を環境変数に設定
+$ACR_NAME = az deployment group show `
+  --resource-group $RESOURCE_GROUP `
+  --name main `
+  --query properties.outputs.acrName.value `
+  --output tsv
+
+echo "ACR_NAME: $ACR_NAME"
+```
+
+#### 0.5-2. Runnerコンテナーイメージのビルドとプッシュ
+
+```powershell
+# パブリックアクセスを一時的に有効化（ローカルからプッシュするため）
+az acr update --name $ACR_NAME --public-network-enabled true
+
+# ACRにログイン
+az acr login --name $ACR_NAME
+
+# イメージをビルド
+docker build -t "${ACR_NAME}.azurecr.io/github-runner:latest" .
+
+# イメージをACRにプッシュ
+docker push "${ACR_NAME}.azurecr.io/github-runner:latest"
+
+# バージョンタグもプッシュ（推奨）
+$VERSION = "1.0.0"
+docker tag "${ACR_NAME}.azurecr.io/github-runner:latest" "${ACR_NAME}.azurecr.io/github-runner:${VERSION}"
+docker push "${ACR_NAME}.azurecr.io/github-runner:${VERSION}"
+
+# パブリックアクセスを無効化
+az acr update --name $ACR_NAME --public-network-enabled false
+
+# イメージ確認
+az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
+```
+
+**所要時間**: 約10-15分（初回ビルド含む）
+
+**詳細**: [Step 00.5 README](../bicep/step00.5-container-registry/README.md)
+
+**スキップした場合**: Step 03で従来方式（インターネット経由でイメージダウンロード）を使用できますが、セキュリティと安定性が低下します。
+
+---
+
 ### Step 02: Key Vaultの構築
 
 **学習内容**: Key Vault、Private Endpoint、アクセスポリシー、シークレット管理
@@ -144,24 +210,34 @@ az keyvault show `
 
 #### 2-4. シークレットの設定
 
-詳細な手順は **[Step 02 README - シークレットの設定](../bicep/step02-keyvault/README.md#シークレットの設定)** を参照してください。
+> **🔐 重要**: 認証方式によって格納するシークレットが異なります。
 
-**概要**:
+**OIDC認証方式の場合 (推奨)**:
+
 ```powershell
 $KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
 
-# 1. サービスプリンシパル情報を格納
-# (前提条件「3. Azure サービスプリンシパル作成」で取得した値を使用)
+# OIDC認証用の情報を格納
+# (前提条件「3. Azure サービスプリンシパルとFederated Credential作成」で取得した値を使用)
 az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-ID" --value $CLIENT_ID
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-SECRET" --value $CLIENT_SECRET
 az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-TENANT-ID" --value $TENANT_ID
 az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-SUBSCRIPTION-ID" --value $SUBSCRIPTION_ID
 
-# 2. GitHub PATを格納
+# GitHub PATを格納
 az keyvault secret set --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --value "<your-github-pat>"
 
-# 3. Web Apps publish profileを格納（--fileオプション使用）
-# 詳細はStep 02 READMEを参照
+# ACR認証情報を格納（Step 00.5完了時）
+# Option 1: Managed Identity（推奨）- Key Vaultへの格納は不要
+# → Step 03でManaged Identity作成とACRへの権限付与を実施
+
+# Option 2: ACR Admin User（テスト環境のみ）
+# $ACR_NAME = "acrinternalrag$ENV_NAME"
+# $ACR_USERNAME = az acr credential show --name $ACR_NAME --query username --output tsv
+# $ACR_PASSWORD = az acr credential show --name $ACR_NAME --query "passwords[0].value" --output tsv
+# $ACR_LOGIN_SERVER = az acr show --name $ACR_NAME --query loginServer --output tsv
+# az keyvault secret set --vault-name $KEY_VAULT_NAME --name "ACR-USERNAME" --value $ACR_USERNAME
+# az keyvault secret set --vault-name $KEY_VAULT_NAME --name "ACR-PASSWORD" --value $ACR_PASSWORD
+# az keyvault secret set --vault-name $KEY_VAULT_NAME --name "ACR-LOGIN-SERVER" --value $ACR_LOGIN_SERVER
 
 # シークレット確認
 az keyvault secret list `
@@ -169,6 +245,34 @@ az keyvault secret list `
   --query "[].name" `
   --output table
 ```
+
+**従来のClient Secret方式の場合 (非推奨)**:
+
+<details>
+<summary>従来方式のシークレット格納手順</summary>
+
+```powershell
+$KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
+
+# サービスプリンシパル情報を格納
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-ID" --value $CLIENT_ID
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-CLIENT-SECRET" --value $CLIENT_SECRET
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-TENANT-ID" --value $TENANT_ID
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "AZURE-SUBSCRIPTION-ID" --value $SUBSCRIPTION_ID
+
+# GitHub PATを格納
+az keyvault secret set --vault-name $KEY_VAULT_NAME --name "GITHUB-PAT" --value "<your-github-pat>"
+
+# シークレット確認
+az keyvault secret list `
+  --vault-name $KEY_VAULT_NAME `
+  --query "[].name" `
+  --output table
+```
+
+</details>
+
+詳細な手順は **[Step 02 README - シークレットの設定](../bicep/step02-keyvault/README.md#シークレットの設定)** を参照してください。
 
 **所要時間**: 約5-7分
 
@@ -178,9 +282,11 @@ az keyvault secret list `
 
 ### Step 03: GitHub Actions Workflowの構築
 
-**学習内容**: GitHub Actions、Self-hosted Runner、CI/CDパイプライン
+**学習内容**: GitHub Actions、Self-hosted Runner、CI/CDパイプライン、OIDC認証
 
 > **📦 重要**: Step 03では、実際のアプリケーションコードとWorkflowファイルは [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) を使用することを推奨します。
+
+> **🔐 認証方式の変更**: GitHub ActionsからAzureへの認証に**Federated Identity (OIDC)**を使用します。従来のClient Secret方式より安全で、長期的なシークレット管理が不要です。
 
 #### 3-1. サンプルリポジトリを使用する場合（推奨）
 
@@ -190,7 +296,11 @@ az keyvault secret list `
    cd internal_rag_Application_sample_repo
    ```
 
-2. **GitHub Secretsを設定**
+2. **Federated Identityの設定とGitHub Secretsの設定**
+   
+   🔗 **[サンプルリポジトリ Step 04 - Federated Identity認証の設定](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step04-deploy-app.md#2-federated-identity-oidc-認証の設定)** を参照
+   
+   または
    
    🔗 **[Step 03 README - GitHub Secretsの設定](../bicep/step03-github-actions/README.md#2-github-secretsの設定)** を参照
 

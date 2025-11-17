@@ -74,6 +74,26 @@ az bicep version
 az bicep upgrade
 ```
 
+#### Docker Desktop (Step 00.5使用時)
+
+Azure Container Registry (ACR) でRunnerイメージをビルドする場合に必要です。
+
+```powershell
+# バージョン確認
+docker --version
+
+# 推奨: Docker Desktop 4.x 以上
+```
+
+**インストール方法**: 
+- Windows: [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)
+- Mac: [Docker Desktop for Mac](https://www.docker.com/products/docker-desktop/)
+- Linux: [Docker Engine](https://docs.docker.com/engine/install/)
+
+**代替手段**: Podman も使用可能
+
+> **💡 Note**: ACRを使用しない場合（従来の動的イメージダウンロード方式）は、Docker Desktopは不要です。ただし、セキュリティと安定性の観点から、ACRの使用を強く推奨します。
+
 #### Azure サブスクリプション
 
 必要な権限:
@@ -334,7 +354,42 @@ Write-Host "CLIENT_SECRET: (保存済み - 表示されません)"
 }
 ```
 
-#### 方法2: Azureポータル
+#### Managed Identity使用の前提条件
+
+**AI SearchとStorage Account間の認証**:
+
+サンプルアプリケーション([internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo))では、AI SearchからStorage Accountへのアクセスに**Managed Identity**を使用します。
+
+```powershell
+# AI SearchのManaged Identityを有効化
+$SEARCH_SERVICE = "<your-search-service-name>"
+az search service update `
+    --resource-group $RESOURCE_GROUP `
+    --name $SEARCH_SERVICE `
+    --identity-type SystemAssigned
+
+# AI SearchのManaged Identity(プリンシパルID)を取得
+$SEARCH_PRINCIPAL_ID = az search service show `
+    --resource-group $RESOURCE_GROUP `
+    --name $SEARCH_SERVICE `
+    --query identity.principalId -o tsv
+
+# Storage Accountへのアクセス権限を付与
+$STORAGE_ACCOUNT = "<your-storage-account-name>"
+az role assignment create `
+    --assignee $SEARCH_PRINCIPAL_ID `
+    --role "Storage Blob Data Reader" `
+    --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT"
+
+Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor Green
+```
+
+> **💡 ヒント**: Managed Identityを使用することで、Storage Accountのアクセスキーを管理する必要がなくなります。
+
+#### (参考) Azureポータルでのサービスプリンシパル作成
+
+<details>
+<summary>Azureポータルを使用したサービスプリンシパル作成手順(従来方式)</summary>
 
 **ステップ1: アプリケーション登録**
 
@@ -385,10 +440,22 @@ Write-Host "CLIENT_SECRET: (保存済み - 表示されません)"
   az account show --query id --output tsv
   ```
 
+> **⚠️ 注意**: この方式は従来の方法であり、OIDC方式と比較してセキュリティリスクが高いため、新規構築では推奨されません。
+
+</details>
+
 #### 取得した情報の保管
 
+**OIDC方式の場合**:
+- `CLIENT_ID` (Application ID)
+- `TENANT_ID` (Directory ID)
+- `SUBSCRIPTION_ID`
+
+これらの3つの値を**GitHub Secrets**に設定します(Step 03で実施)。
+
+**従来方式の場合** (非推奨):
 > **⚠️ 重要**: 
-> - 出力された`appId`（Client ID）、`password`（Client Secret）、`tenant`（Tenant ID）、`subscriptionId`を安全に保管してください
+> - 出力された`appId`(Client ID)、`password`(Client Secret)、`tenant`(Tenant ID)、`subscriptionId`を安全に保管してください
 > - `password`は一度しか表示されません。必ずコピーしてください
 > - Step 02でこれらの4つの値をKey Vaultに格納します
 
