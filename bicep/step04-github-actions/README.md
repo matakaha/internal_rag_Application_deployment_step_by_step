@@ -79,10 +79,10 @@ gh repo create <org>/<repo-name> --private --source=. --remote=origin --push
 | `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
 | `GH_PAT` | Personal Access Token | GitHub Settings |
 
-**従来のClient Secret方式 (非推奨)**:
+**Client Secret方式 (非推奨)**:
 
 <details>
-<summary>従来方式のSecrets一覧</summary>
+<summary>Client Secret方式のSecrets一覧</summary>
 
 | Secret名 | 内容 | 取得方法 |
 |---------|------|---------|
@@ -126,10 +126,10 @@ gh secret set GH_PAT --body $GITHUB_PAT
 > - OIDC方式では**CLIENT_SECRET (パスワード)は不要**です
 > - Federated Credentialが正しく設定されていれば、GitHub Actionsワークフロー実行時に一時的なトークンが自動発行されます
 
-**従来のClient Secret方式の場合 (非推奨)**:
+**Client Secret方式の場合 (非推奨)**:
 
 <details>
-<summary>従来方式のGitHub Secrets設定手順</summary>
+<summary>Client Secret方式のGitHub Secrets設定手順</summary>
 
 ```powershell
 # 1. Key Vaultからサービスプリンシパル情報を取得
@@ -208,10 +208,10 @@ Write-Host $GITHUB_PAT
 
 5. 各Secretで **Add secret** をクリック
 
-**従来のClient Secret方式の場合 (非推奨)**:
+**Client Secret方式の場合 (非推奨)**:
 
 <details>
-<summary>従来方式のWeb UI設定手順</summary>
+<summary>Client Secret方式のWeb UI設定手順</summary>
 
 **ステップ1: Key Vaultから値を取得して表示**
 
@@ -271,7 +271,7 @@ gh secret list
 または、GitHub Web UIで Settings → Secrets and variables → Actions を開いて、必要なSecretsが表示されることを確認してください。
 
 **OIDC方式の場合**: 5つのSecret (AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, KEY_VAULT_NAME, GH_PAT)  
-**従来方式の場合**: 3つのSecret (AZURE_CREDENTIALS, KEY_VAULT_NAME, GH_PAT)
+**Client Secret方式の場合**: 3つのSecret (AZURE_CREDENTIALS, KEY_VAULT_NAME, GH_PAT)
 
 ---
 
@@ -502,19 +502,18 @@ jobs:
 
 ## Workflowの詳細解説
 
-### 重要な変更: Azure Container Registry (ACR) の利用
+### 重要: Azure Container Registry (ACR) の利用
 
-従来の方式では、Container Instance起動時にインターネット経由でGitHub Runnerイメージをダウンロードしていました。新方式では、事前にACRにビルドしたRunnerイメージを使用することで、完全閉域環境でのRunner起動を実現します。
+事前にACRにビルドしたRunnerイメージを使用することで、完全閉域環境でのRunner起動を実現します。
 
-#### 従来方式 vs 新方式
+#### ACR利用のメリット
 
-| 項目 | 従来方式 | 新方式 (ACR利用) |
-|------|---------|-----------------|
-| **イメージ取得元** | インターネット (GitHub/MCR) | Azure Container Registry |
-| **ネットワーク** | インターネット接続必須 | 完全閉域 (Private Endpoint) |
-| **起動速度** | 遅い (数分) | 高速 (数十秒) |
-| **セキュリティ** | 外部依存あり | 完全制御可能 |
-| **安定性** | 外部障害の影響あり | 内部ネットワークのみ |
+| 項目 | 説明 |
+|------|------|
+| **セキュリティ** | 完全閉域環境で実行可能、インターネットアクセス不要 |
+| **安定性** | 外部サービス依存なし、内部リソースのみで完結 |
+| **起動速度** | Private Endpoint経由で高速なイメージ取得 |
+| **バージョン管理** | タグで明示的にバージョン指定、環境の再現性を確保 |
 
 #### ACR認証方式の選択
 

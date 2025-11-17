@@ -13,41 +13,33 @@
 
 ## アーキテクチャ
 
-### 従来の方式 (動的作成)
-```
-GitHub Actions Workflow
-  ↓
-Azure Container Instance作成
-  ↓
-インターネット経由でRunnerイメージをダウンロード ← セキュリティリスク
-  ↓
-Runner起動・ジョブ実行
-```
+### ACRを使用した閉域環境でのRunner実行
 
-### 新方式 (ACR事前ビルド)
 ```
 [事前準備フェーズ - インターネット接続環境]
 ローカルマシン/ビルドサーバー
   ↓
 Microsoft公式イメージベースでRunnerイメージをビルド
   ↓
-ACRへプッシュ (パブリックアクセス)
+ACRへプッシュ (一時的にパブリックアクセス有効化)
+  ↓
+パブリックアクセス無効化
 
 [実行フェーズ - 閉域環境]
 GitHub Actions Workflow
   ↓
 Azure Container Instance作成
   ↓
-ACR Private Endpoint経由でイメージをプル ← 完全閉域
+ACR Private Endpoint経由でイメージをプル
   ↓
 Runner起動・ジョブ実行
 ```
 
-### メリット
-- ✅ **セキュリティ向上**: 実行時にインターネットアクセス不要
-- ✅ **安定性向上**: 外部依存の排除
-- ✅ **起動高速化**: ローカルネットワーク経由でイメージ取得
-- ✅ **バージョン管理**: イメージのタグ管理で環境の再現性確保
+### このアプローチのメリット
+- ✅ **セキュリティ**: 実行時にインターネットアクセス不要、完全閉域環境で動作
+- ✅ **安定性**: 外部サービス依存なし、ネットワーク障害の影響を受けない
+- ✅ **高速起動**: Private Endpoint経由の高速なイメージ取得
+- ✅ **バージョン管理**: イメージタグで環境の再現性を確保
 
 ## 作成されるリソース
 
@@ -61,7 +53,7 @@ Runner起動・ジョブ実行
 
 - [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step) Step 01が完了していること
 - Virtual Network `vnet-internal-rag-<環境名>` が存在すること
-- Docker Desktop または Podman がインストールされていること（イメージビルド用）
+- Azure CLI がインストールされていること
 
 確認方法:
 ```powershell
@@ -73,8 +65,8 @@ az network vnet show `
   --resource-group $RESOURCE_GROUP `
   --name "vnet-internal-rag-$ENV_NAME"
 
-# Docker確認
-docker --version
+# Azure CLI確認
+az --version
 ```
 
 ## デプロイ手順
@@ -129,9 +121,72 @@ echo "ACR_NAME: $ACR_NAME"
 
 ### 4. Runnerコンテナーイメージのビルド
 
-#### 4.1 Dockerfileの作成
+2つの方法があります:
 
-`Dockerfile` を作成します（このディレクトリに既に用意されています）:
+- **方法1: ACR Tasks使用(推奨、Docker不要)** - クラウド上でビルド
+- **方法2: ローカルDockerでビルド** - Docker Desktopが必要
+
+#### 方法1: ACR Tasks使用(推奨)
+
+**メリット**:
+- ✅ ローカルにDockerのインストール不要
+- ✅ クラウド上で高速ビルド
+- ✅ ネットワーク帯域を消費しない
+
+**手順**:
+
+```powershell
+# 1. パブリックアクセスを一時的に有効化（ACR Tasksに必要）
+az acr update --name $ACR_NAME --public-network-enabled true
+
+# 2. ACR上で直接ビルドとプッシュを実行
+az acr build `
+  --registry $ACR_NAME `
+  --image github-runner:latest `
+  --image github-runner:1.0.0 `
+  --file Dockerfile `
+  .
+
+# 3. イメージ確認（パブリックアクセス有効中に実施）
+az acr repository show-tags `
+  --name $ACR_NAME `
+  --repository github-runner `
+  --output table
+
+# 4. パブリックアクセスを無効化（セキュリティ強化）
+az acr update --name $ACR_NAME --public-network-enabled false
+```
+
+**所要時間**: 約3-5分
+
+<details>
+<summary>ACR Tasksの詳細説明</summary>
+
+`az acr build` コマンドは以下を自動的に実行します:
+
+1. ローカルのDockerfileとコンテキスト(カレントディレクトリ)をACRにアップロード
+2. ACR上のビルドエージェントでDockerイメージをビルド
+3. ビルドしたイメージをACRに自動プッシュ
+4. ビルドログをリアルタイムで表示
+
+> **⚠️ 注意**: ACR TasksのビルドエージェントはパブリックIPアドレスから接続するため、ビルド中は一時的に`publicNetworkAccess: Enabled`と`networkRuleSet.defaultAction: Allow`が必要です。ビルド完了後は必ず両方とも元の設定に戻してください。
+
+</details>
+
+---
+
+#### 方法2: ローカルDockerでビルド(オプション)
+
+**前提条件**: Docker Desktop または Podman がインストールされていること
+
+```powershell
+# Docker確認
+docker --version
+```
+
+##### 4.1 Dockerfileの確認
+
+`Dockerfile` がこのディレクトリに既に用意されています:
 
 ```dockerfile
 # Microsoft公式のGitHub Actions Runnerイメージを使用
@@ -172,9 +227,9 @@ ENTRYPOINT ["/actions-runner/start.sh"]
 - GitHub Actions Runner をインストール
 - 起動時に自動でRunnerを登録
 
-#### 4.2 起動スクリプトの作成
+##### 4.2 起動スクリプトの確認
 
-`start.sh` を作成します（このディレクトリに既に用意されています）:
+`start.sh` がこのディレクトリに既に用意されています:
 
 ```bash
 #!/bin/bash
@@ -210,7 +265,16 @@ REGISTRATION_TOKEN=$(curl -sX POST \
 ./run.sh
 ```
 
-#### 4.3 イメージのビルドとプッシュ
+##### 4.3 パブリックアクセスの一時的な有効化
+
+> **⚠️ 注意**: ローカルからACRにプッシュする場合のみ必要です。
+
+```powershell
+# パブリックアクセスを一時的に有効化
+az acr update --name $ACR_NAME --public-network-enabled true
+```
+
+##### 4.4 イメージのビルドとプッシュ
 
 ```powershell
 # ACRにログイン
@@ -226,18 +290,35 @@ docker push "${ACR_NAME}.azurecr.io/github-runner:latest"
 $VERSION = "1.0.0"
 docker tag "${ACR_NAME}.azurecr.io/github-runner:latest" "${ACR_NAME}.azurecr.io/github-runner:${VERSION}"
 docker push "${ACR_NAME}.azurecr.io/github-runner:${VERSION}"
+
+# パブリックアクセスを無効化（セキュリティ強化）
+az acr update --name $ACR_NAME --public-network-enabled false
 ```
 
 **所要時間**: 約5-10分（初回ビルド）
 
+</details>
+
+---
+
 ### 5. イメージの確認
 
+> **⚠️ 注意**: パブリックアクセス無効化後は、ローカルからのイメージ確認はできません。上記手順の「3. イメージ確認」で実施済みであることを確認してください。
+
+パブリックアクセス無効化後に確認が必要な場合は、一時的に有効化してください:
+
 ```powershell
+# 一時的にパブリックアクセスを有効化
+az acr update --name $ACR_NAME --public-network-enabled true
+
 # ACR内のイメージ一覧を表示
 az acr repository list --name $ACR_NAME --output table
 
 # 特定リポジトリのタグ一覧を表示
 az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
+
+# 確認後、再度無効化
+az acr update --name $ACR_NAME --public-network-enabled false
 ```
 
 **期待される出力**:
@@ -505,21 +586,33 @@ az network vnet subnet update `
 
 **原因**: `publicNetworkAccess: Disabled` の場合、ローカルからアクセス不可
 
-**対処法**:
-1. 一時的に `publicNetworkAccess: Enabled` に変更
-2. イメージをプッシュ
-3. 再度 `Disabled` に変更
+**対処法1: パブリックアクセスを一時的に有効化**:
 
 ```powershell
 # パブリックアクセス有効化
 az acr update --name $ACR_NAME --public-network-enabled true
 
-# イメージプッシュ
-docker push ${ACR_NAME}.azurecr.io/github-runner:latest
+# イメージ確認またはプッシュ
+az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
 
 # パブリックアクセス無効化
 az acr update --name $ACR_NAME --public-network-enabled false
 ```
+
+**対処法2: Docker不要の認証 (Azure CLIのみ)**:
+
+```powershell
+# パブリックアクセス有効化
+az acr update --name $ACR_NAME --public-network-enabled true
+
+# Docker不要のログイン方法（トークン取得）
+az acr login --name $ACR_NAME --expose-token
+
+# パブリックアクセス無効化
+az acr update --name $ACR_NAME --public-network-enabled false
+```
+
+> **💡 Note**: ACR Tasksを使用する場合、Dockerインストールは不要です。`az acr repository`コマンドでイメージ確認ができます。
 
 ### エラー: Dockerイメージのビルドに失敗
 

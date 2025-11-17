@@ -195,7 +195,7 @@ VPN設定の更新が完了するまでの間は、**Azure Cloud Shell**を使�
 
 ### 1. 認証情報の格納
 
-> **🔐 認証方式**: OIDC認証(推奨)と従来のClient Secret方式で格納するシークレットが異なります。
+> **🔐 認証方式**: OIDC認証(推奨)とClient Secret方式で格納するシークレットが異なります。
 
 #### OIDC認証方式の場合 (推奨)
 
@@ -234,10 +234,10 @@ az keyvault secret set `
 > - これらの変数は同じPowerShellセッションで保持されます
 > - PowerShellセッションを閉じた場合は、変数が失われるため手動で再設定してください
 
-#### 従来のClient Secret方式の場合 (非推奨)
+#### Client Secret方式の場合 (非推奨)
 
 <details>
-<summary>従来方式のシークレット格納手順</summary>
+<summary>Client Secret方式のシークレット格納手順</summary>
 
 [前提条件 - Azure サービスプリンシパル作成](../../docs/00-prerequisites.md#3-azureサービスプリンシパルとfederated-credential作成)で作成したサービスプリンシパルの情報をKey Vaultに格納します。
 
@@ -446,7 +446,7 @@ ACR-PASSWORD              True
 ACR-LOGIN-SERVER          True
 ```
 
-**従来のClient Secret方式の場合**:
+**Client Secret方式の場合**:
 ```
 Name                      Enabled
 ------------------------  ---------

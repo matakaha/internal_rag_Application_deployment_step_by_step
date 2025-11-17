@@ -100,6 +100,36 @@ echo "ACR_NAME: $ACR_NAME"
 
 #### 1-2. Runnerコンテナーイメージのビルドとプッシュ
 
+**推奨: ACR Tasksを使用(Docker不要)**
+
+```powershell
+# 1. パブリックアクセスを一時的に有効化
+az acr update --name $ACR_NAME --public-network-enabled true
+
+# 2. ネットワークルールのデフォルトアクションをAllowに変更
+az acr update --name $ACR_NAME --default-action Allow
+
+# 3. ACR上で直接ビルドとプッシュを実行
+az acr build `
+  --registry $ACR_NAME `
+  --image github-runner:latest `
+  --image github-runner:1.0.0 `
+  --file Dockerfile `
+  .
+
+# 4. イメージ確認
+az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
+
+# 5. ネットワークルールをDenyに戻す
+az acr update --name $ACR_NAME --default-action Deny
+
+# 6. パブリックアクセスを無効化
+az acr update --name $ACR_NAME --public-network-enabled false
+```
+
+<details>
+<summary>オプション: ローカルDockerでビルド（Docker Desktop必要）</summary>
+
 ```powershell
 # パブリックアクセスを一時的に有効化（ローカルからプッシュするため）
 az acr update --name $ACR_NAME --public-network-enabled true
@@ -125,7 +155,9 @@ az acr update --name $ACR_NAME --public-network-enabled false
 az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
 ```
 
-**所要時間**: 約10-15分（初回ビルド含む）
+</details>
+
+**所要時間**: 約3-5分（ACR Tasks使用時）
 
 **詳細**: [Step 01 README](../bicep/step01-container-registry/README.md)
 
@@ -244,10 +276,10 @@ az keyvault secret list `
   --output table
 ```
 
-**従来のClient Secret方式の場合 (非推奨)**:
+**Client Secret方式の場合 (非推奨)**:
 
 <details>
-<summary>従来方式のシークレット格納手順</summary>
+<summary>Client Secret方式のシークレット格納手順</summary>
 
 ```powershell
 $KEY_VAULT_NAME = "kv-gh-runner-$ENV_NAME"
@@ -284,7 +316,7 @@ az keyvault secret list `
 
 > **📦 重要**: Step 04では、実際のアプリケーションコードとWorkflowファイルは [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) を使用することを推奨します。
 
-> **🔐 認証方式の変更**: GitHub ActionsからAzureへの認証に**Federated Identity (OIDC)**を使用します。従来のClient Secret方式より安全で、長期的なシークレット管理が不要です。
+> **🔐 推奨認証方式**: GitHub ActionsからAzureへの認証に**Federated Identity (OIDC)**を使用します。Client Secret方式と比較して、長期的なシークレット管理が不要でより安全です。
 
 #### 3-1. サンプルリポジトリを使用する場合（推奨）
 

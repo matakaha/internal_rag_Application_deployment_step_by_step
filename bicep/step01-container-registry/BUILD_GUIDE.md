@@ -1,12 +1,57 @@
-# Azure Container Registry ビルド・プッシュスクリプト
+# Azure Container Registry ビルド・プッシュガイド
 
-このスクリプトは、GitHub Actions Self-hosted Runnerコンテナーイメージをビルドし、Azure Container Registryにプッシュします。
+このガイドでは、GitHub Actions Self-hosted Runnerコンテナーイメージをビルドし、Azure Container Registryにプッシュする方法を説明します。
 
 ## 前提条件
 
 - Azure CLIがインストールされていること
-- Docker Desktop または Podman がインストールされていること
 - Azure Container Registry が作成されていること（Step 01のBicepデプロイ完了）
+
+## 方法1: ACR Tasks使用（推奨、Docker不要）
+
+**メリット**:
+- ✅ ローカルにDockerのインストール不要
+- ✅ クラウド上で高速ビルド
+- ✅ ネットワーク帯域を消費しない
+
+> **⚠️ 注意**: ACR Tasksを使用する場合も、ビルドエージェント接続のため一時的にパブリックアクセス有効化とネットワークルール変更が必要です。
+
+### 使用方法
+
+```powershell
+# 環境変数の設定
+$RESOURCE_GROUP = "rg-internal-rag-dev"
+$ACR_NAME = "acrinternalragdev"  # 実際のACR名に変更
+
+# 1. パブリックアクセスを一時的に有効化
+az acr update --name $ACR_NAME --public-network-enabled true
+
+# 2. ネットワークルールのデフォルトアクションをAllowに変更
+az acr update --name $ACR_NAME --default-action Allow
+
+# 3. ACR上で直接ビルドとプッシュ
+az acr build `
+  --registry $ACR_NAME `
+  --image github-runner:latest `
+  --image github-runner:1.0.0 `
+  --file Dockerfile `
+  .
+
+# 4. イメージ確認
+az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
+
+# 5. ネットワークルールをDenyに戻す
+az acr update --name $ACR_NAME --default-action Deny
+
+# 6. パブリックアクセスを無効化
+az acr update --name $ACR_NAME --public-network-enabled false
+```
+
+---
+
+## 方法2: ローカルDockerでビルド（オプション）
+
+**前提条件**: Docker Desktop または Podman がインストールされていること
 
 ## 使用方法
 

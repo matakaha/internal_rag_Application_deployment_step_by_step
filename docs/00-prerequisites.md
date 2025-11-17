@@ -74,9 +74,11 @@ az bicep version
 az bicep upgrade
 ```
 
-#### Docker Desktop (Step 01使用時)
+#### Docker Desktop (オプション)
 
-Azure Container Registry (ACR) でRunnerイメージをビルドする場合に必要です。
+ローカル環境でRunnerイメージをビルドする場合に必要です。
+
+**ACR Tasksを使用する場合（推奨）は不要です。**
 
 ```powershell
 # バージョン確認
@@ -92,7 +94,7 @@ docker --version
 
 **代替手段**: Podman も使用可能
 
-> **💡 Note**: ACRを使用しない場合（従来の動的イメージダウンロード方式）は、Docker Desktopは不要です。ただし、セキュリティと安定性の観点から、ACRの使用を強く推奨します。
+> **💡 Note**: Step 01では**ACR Tasks**（クラウド上でビルド）を推奨しています。ローカルDockerは不要です。ローカルでビルドしたい場合のみDocker Desktopをインストールしてください。
 
 #### Azure サブスクリプション
 
@@ -389,7 +391,7 @@ Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor
 #### (参考) Azureポータルでのサービスプリンシパル作成
 
 <details>
-<summary>Azureポータルを使用したサービスプリンシパル作成手順(従来方式)</summary>
+<summary>Azureポータルを使用したサービスプリンシパル作成手順</summary>
 
 **ステップ1: アプリケーション登録**
 
@@ -440,7 +442,7 @@ Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor
   az account show --query id --output tsv
   ```
 
-> **⚠️ 注意**: この方式は従来の方法であり、OIDC方式と比較してセキュリティリスクが高いため、新規構築では推奨されません。
+> **⚠️ 注意**: Client Secret方式はOIDC方式と比較してシークレット管理の負担が大きく、セキュリティリスクが高いため、OIDC方式を推奨します。
 
 </details>
 
@@ -453,7 +455,7 @@ Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor
 
 これらの3つの値を**GitHub Secrets**に設定します(Step 03で実施)。
 
-**従来方式の場合** (非推奨):
+**Client Secret方式の場合** (非推奨):
 > **⚠️ 重要**: 
 > - 出力された`appId`(Client ID)、`password`(Client Secret)、`tenant`(Tenant ID)、`subscriptionId`を安全に保管してください
 > - `password`は一度しか表示されません。必ずコピーしてください
