@@ -117,7 +117,13 @@ resource containerInstance 'Microsoft.ContainerInstance/containerGroups@2023-05-
         id: containerSubnet.id
       }
     ]
-    imageRegistryCredentials: []
+    imageRegistryCredentials: [
+      {
+        server: acr.properties.loginServer
+        username: acr.listCredentials().username
+        password: acr.listCredentials().passwords[0].value
+      }
+    ]
   }
 }
 

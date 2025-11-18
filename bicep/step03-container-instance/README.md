@@ -13,45 +13,37 @@
 
 ## なぜ事前にACIを作成するのか?
 
-### 課題: GitHub ActionsからACRへの接続問題
+GitHub Actions Self-hosted Runnerを使用するために、Azure Container Instance (ACI)を事前に作成します。
 
-従来の方法では、GitHub Actionsワークフローの中でACIを作成し、その際にACRからRunnerイメージをプルしていました。しかし、この方法には以下の問題がありました:
+### このアプローチの重要性
 
-1. **ACRをパブリックに公開する必要がある**: GitHub Actions(ubuntu-latest runner)はインターネット上で動作するため、ACRにアクセスするにはパブリックアクセスを有効にする必要がありました
-2. **セキュリティリスク**: ACRのパブリック公開は、セキュリティポリシーに反する可能性があります
-3. **設定の煩雑さ**: デプロイのたびにACRのパブリックアクセスを有効化・無効化する必要がありました
+GitHub Actionsのワークフロー実行中にACIを作成しようとすると、以下の問題が発生します:
 
-### 解決策: 事前作成アプローチ
+1. **ACRへのアクセス問題**: GitHub Actions(ubuntu-latest runner)はインターネット上で動作するため、ACRからRunnerイメージをプルするにはACRをパブリックアクセス可能にする必要があります
+2. **セキュリティリスク**: ACRのパブリック公開は、完全閉域構成を目指す本アーキテクチャの方針に反します
+3. **運用の複雑さ**: デプロイごとにACRのアクセス設定を変更する必要があります
 
-ACIを**事前に作成**しておくことで、以下のメリットが得られます:
+### 事前作成のメリット
 
-✅ **ACRを完全閉域に保てる**: ACIとACRは同じvNet内にあるため、Private Endpoint経由でイメージをプルできます  
-✅ **GitHub Actionsの役割を最小化**: ワークフローではACIの起動・停止のみを行い、ACRへの接続は不要になります  
-✅ **シンプルな運用**: イメージ更新時のみACRを一時的にパブリック化すればよく、通常運用では完全閉域を維持できます
+ACIを**事前に作成**しておくことで、これらの問題を解決できます:
 
-### アーキテクチャの変更
+✅ **完全閉域を維持**: ACIとACRは同じvNet内にあるため、Private Endpoint経由でイメージをプルできます  
+✅ **シンプルな運用**: GitHub Actionsワークフローでは、作成済みのACIを起動・停止するだけでOKです  
+✅ **セキュリティ強化**: ACRへのパブリックアクセスが不要になり、完全閉域構成を実現できます
 
-**従来の方法**:
+### アーキテクチャの流れ
+
 ```
-GitHub Actions (ubuntu-latest)
-  ↓ ACIを作成
-  ↓ ACRからイメージをプル (パブリックアクセス必要!)
+[事前準備フェーズ(このステップで実施)]
 Azure Container Instance
-  ↓ Self-hosted Runnerとして動作
-```
+  ← ACRからRunnerイメージをプル (Private Endpoint経由)
+  ← Managed Identityで認証
 
-**新しい方法**:
-```
-[事前準備フェーズ]
-Azure Container Instance (事前作成済み)
-  ← ACRからイメージをプル (Private Endpoint経由、閉域!)
-
-[実行フェーズ]
+[GitHub Actions実行フェーズ(Step 05で実施)]
 GitHub Actions (ubuntu-latest)
   ↓ ACIを起動 (az container start)
-  ↓ ACRへの接続は不要!
-Azure Container Instance
-  ↓ Self-hosted Runnerとして動作
+  ↓ ワークフローを実行
+  ↓ ACIを停止 (az container stop)
 ```
 
 ## 作成されるリソース
@@ -66,19 +58,19 @@ Azure Container Instance
 
 - [Step 01: ACRの構築](../step01-container-registry/README.md)が完了していること
 - [Step 02: Container Instance Subnetの構築](../step02-runner-subnet/README.md)が完了していること
-- ACRにRunnerイメージ(`github-runner:latest`)がプッシュ済みであること
+- **重要**: ACRにRunnerイメージ(`github-runner:latest`)がプッシュ済みであること
+  - Step 01の[BUILD_GUIDE.md](../step01-container-registry/BUILD_GUIDE.md)を参照してイメージをビルド・プッシュしてください
+
+> **⚠️ 注意**: ACRが完全閉域構成のため、ローカル環境から直接ACRの内容を確認することはできません。これは正常な動作です。イメージが存在するかの確認が必要な場合は、後述のトラブルシューティングセクションを参照してください。
 
 確認方法:
 ```powershell
 # ACRの確認
 $ACR_NAME = "acrinternalragdev"
-az acr show --name $ACR_NAME --query "{Name:name, LoginServer:loginServer}"
-
-# Runnerイメージの確認(パブリックアクセスが一時的に有効な場合のみ)
-az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
+$RESOURCE_GROUP = "rg-internal-rag-dev"
+az acr show --name $ACR_NAME --query "{Name:name, LoginServer:loginServer, PublicAccess:publicNetworkAccess}"
 
 # Subnetの確認
-$RESOURCE_GROUP = "rg-internal-rag-dev"
 $ENV_NAME = "dev"
 az network vnet subnet show `
   --resource-group $RESOURCE_GROUP `
@@ -112,11 +104,17 @@ param memoryInGb = 4
 # Step 03ディレクトリに移動
 cd bicep/step03-container-instance
 
-# デプロイ実行
+# 1. 一時的にパブリックアクセス有効化
+az acr update --name $ACR_NAME --public-network-enabled true --default-action Allow
+
+# 2. デプロイ実行
 az deployment group create `
   --resource-group $RESOURCE_GROUP `
   --template-file main.bicep `
   --parameters parameters.bicepparam
+
+# 3. パブリックアクセス無効化
+az acr update --name acrinternalragdev --default-action Deny --public-network-enabled false
 ```
 
 **所要時間**: 約3-5分
@@ -144,9 +142,29 @@ az container show `
 ```json
 {
   "Name": "aci-github-runner-dev",
-  "State": "Succeeded",
-  "IP": null,  // vNet統合時はプライベートIPのみ
+  "State": "Failed",
+  "IP": null,
   "Subnet": "/subscriptions/.../subnets/snet-container-instances"
+}
+```
+
+> **⚠️ 重要**: `State: "Failed"`は**正常な状態**です。これはContainer Instanceが作成され、イメージのプルに成功したものの、GitHub Runner起動に必要な環境変数（`RUNNER_TOKEN`, `RUNNER_REPOSITORY_URL`）が設定されていないため、コンテナが終了したことを示しています。これらの環境変数は、GitHub Actionsワークフロー実行時に動的に設定されます。
+
+**実際のプロビジョニング状態を確認**:
+```powershell
+az container show `
+  --resource-group $RESOURCE_GROUP `
+  --name $ACI_NAME `
+  --query "{Name:name, ProvisioningState:provisioningState, RestartPolicy:restartPolicy, ManagedIdentity:identity.type}"
+```
+
+**期待される出力**:
+```json
+{
+  "Name": "aci-github-runner-dev",
+  "ProvisioningState": "Succeeded",
+  "RestartPolicy": "Never",
+  "ManagedIdentity": "SystemAssigned"
 }
 ```
 
@@ -386,10 +404,19 @@ az container logs `
 **対処法**:
 
 ```powershell
-# 1. ACRにイメージが存在するか確認(パブリックアクセス有効時のみ)
-az acr update --name $ACR_NAME --public-network-enabled true
+# 1. ACRにイメージが存在するか確認(閉域状態では確認不可)
+# 一時的にパブリックアクセスを有効化して確認
+az acr update --name $ACR_NAME --public-network-enabled true --default-action Allow
+
+# イメージの存在確認
 az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
-az acr update --name $ACR_NAME --public-network-enabled false
+
+# イメージが存在しない場合は、Step 01のBUILD_GUIDEを参照してビルド・プッシュ
+# cd ../step01-container-registry
+# az acr build --registry $ACR_NAME --image github-runner:latest --file Dockerfile .
+
+# 確認後、再度閉域化
+az acr update --name $ACR_NAME --default-action Deny --public-network-enabled false
 
 # 2. Managed Identityの権限を確認
 $PRINCIPAL_ID = az container show --resource-group $RESOURCE_GROUP --name $ACI_NAME --query "identity.principalId" -o tsv
@@ -448,6 +475,46 @@ az container logs `
 - イメージが正しくプルされていない
 - 環境変数が不足している(RUNNER_TOKEN, RUNNER_REPOSITORY_URLなど)
 - vNet設定が正しくない
+
+### エラー: Private Endpoint経由でACRにアクセスできない
+
+**症状**: Container Instanceの初回デプロイ時に`InaccessibleImage`エラーが発生する
+
+**原因**: 
+Container InstanceがvNet内に配置されていても、初回のイメージプル時にPrivate Endpoint経由でACRにアクセスできない場合があります。これは以下の理由による可能性があります:
+- DNS解決の遅延
+- ネットワーク接続の初期化タイミング
+- Admin User認証情報を使用していても、ネットワーク的にACRに到達できない
+
+**対処法**:
+
+Container Instanceの初回デプロイ時のみ、ACRを一時的にパブリックアクセス可能にします:
+
+```powershell
+# 1. Admin Userを有効化（Bicepテンプレートで認証情報を使用するため）
+az acr update --name $ACR_NAME --admin-enabled true
+
+# 2. ACRを一時的にパブリック化
+az acr update --name $ACR_NAME --public-network-enabled true --default-action Allow
+
+# 3. Container Instanceをデプロイ
+az deployment group create `
+  --resource-group $RESOURCE_GROUP `
+  --template-file main.bicep `
+  --parameters parameters.bicepparam
+
+# 4. デプロイ成功後、ACRを再度完全閉域化
+az acr update --name $ACR_NAME --default-action Deny --public-network-enabled false
+
+# 5. Admin Userも無効化（オプション、推奨）
+az acr update --name $ACR_NAME --admin-enabled false
+```
+
+> **💡 ヒント**: 一度Container Instanceが作成されれば、次回以降の起動時（`az container start`）はPrivate Endpoint経由で問題なくアクセスできます。この手順は初回デプロイ時のみ必要です。
+
+> **⚠️ 重要**: Container Instanceを削除して再作成する場合は、上記の手順1から再度実行してください。Admin Userを無効化している場合は、必ず有効化してからデプロイしてください。
+
+> **⚠️ セキュリティ注意**: パブリックアクセスは必ずデプロイ完了後に無効化してください。
 
 ## ベストプラクティス
 
