@@ -136,8 +136,8 @@ echo "ACR_NAME: $ACR_NAME"
 **手順**:
 
 ```powershell
-# 1. パブリックアクセスを一時的に有効化（ACR Tasksに必要）
-az acr update --name $ACR_NAME --public-network-enabled true
+# 1. パブリックアクセスとネットワークルールを一時的に許可（ACR Tasksに必要）
+az acr update --name $ACR_NAME --public-network-enabled true --default-action Allow
 
 # 2. ACR上で直接ビルドとプッシュを実行
 az acr build `
@@ -153,8 +153,8 @@ az acr repository show-tags `
   --repository github-runner `
   --output table
 
-# 4. パブリックアクセスを無効化（セキュリティ強化）
-az acr update --name $ACR_NAME --public-network-enabled false
+# 4. パブリックアクセスとネットワークルールを無効化（セキュリティ強化）
+az acr update --name $ACR_NAME --public-network-enabled false --default-action Deny
 ```
 
 **所要時間**: 約3-5分

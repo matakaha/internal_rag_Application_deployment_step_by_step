@@ -315,7 +315,7 @@ az network private-dns zone list --resource-group $RESOURCE_GROUP --query "[].na
 
 Web Appsデプロイ用のサービスプリンシパルを作成します。
 
-#### 方法1: Azure CLI（推奨）
+#### Azure CLI使用（推奨）
 
 ```powershell
 # 環境変数の確認（事前準備タスク1で設定済みのはず）
@@ -388,10 +388,10 @@ Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor
 
 > **💡 ヒント**: Managed Identityを使用することで、Storage Accountのアクセスキーを管理する必要がなくなります。
 
-#### (参考) Azureポータルでのサービスプリンシパル作成
+#### Azureポータル使用（参考）
 
 <details>
-<summary>Azureポータルを使用したサービスプリンシパル作成手順</summary>
+<summary>Azureポータルを使用したサービスプリンシパル作成手順（Azure CLIが使えない場合）</summary>
 
 **ステップ1: アプリケーション登録**
 
