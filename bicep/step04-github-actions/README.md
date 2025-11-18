@@ -19,11 +19,15 @@
 
 | ファイル | 目的 |
 |---------|------|
-| `.github/workflows/deploy.yml` | メインデプロイワークフロー |
+| `.github/workflows/deploy.yml` | App Service(フロントエンド)用デプロイワークフロー |
+| `.github/workflows/deploy-functions.yml` | Azure Functions(バックエンド)用デプロイワークフロー |
 | `scripts/setup-runner.ps1` | Runner起動スクリプト |
 | `scripts/cleanup-runner.ps1` | Runnerクリーンアップスクリプト |
-| `src/app.py` | FlaskベースのRAGチャットアプリ |
+| `src/app.js` | Node.js/Express フロントエンドアプリ |
+| `function_app.py` | Azure Functions バックエンドAPI (Python v2) |
 | `requirements.txt` | Python依存関係 |
+
+> **Note**: アプリケーションはフロントエンド(Node.js/Express on App Service)とバックエンド(Python on Azure Functions)の2層構成です。
 
 ## 前提条件
 

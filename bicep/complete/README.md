@@ -15,6 +15,8 @@ Step 01-02を個別にデプロイする代わりに、このディレクトリ�
 | **Security** | Key Vault | GitHub Actionsシークレット管理用 |
 | **Security** | Private Endpoint | Key Vault用Private Endpoint |
 
+> **Note**: Azure Container Registry (ACR)はStep 01で別途構築します。完全閉域環境を実現するため、ACR経由でRunnerコンテナイメージを配信します。
+
 ## 前提条件
 
 ### 既存環境
@@ -234,10 +236,10 @@ az network private-endpoint delete `
 
 ## 参考資料
 
-- [Step 01: Azure Container Registryの構築](../step01-container-registry/README.md)
-- [Step 02: Runner Subnetの構築](../step02-runner-subnet/README.md)
-- [Step 03: Key Vaultの構築](../step03-keyvault/README.md)
-- [Step 04: GitHub Actionsワークフロー](../step04-github-actions/README.md)
+- [Step 01: Azure Container Registryの構築](../step01-container-registry/README.md) - ACRとRunnerイメージのビルド
+- [Step 02: Runner Subnetの構築](../step02-runner-subnet/README.md) - Container Instance用Subnet追加
+- [Step 03: Key Vaultの構築](../step03-keyvault/README.md) - シークレット管理
+- [Step 04: GitHub Actionsワークフロー](../step04-github-actions/README.md) - CI/CDパイプライン構築
 - [Azure Container Instances](https://learn.microsoft.com/azure/container-instances/)
 - [Azure Key Vault](https://learn.microsoft.com/azure/key-vault/)
 - [GitHub Actions Self-hosted Runners](https://docs.github.com/actions/hosting-your-own-runners)

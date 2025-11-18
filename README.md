@@ -30,15 +30,24 @@ GitHub ActionsでAzure閉域環境（vNet統合済Web Apps）へCI/CDデプロ�
 │  ┌────────┴────────────────────────┴─────────┐            │
 │  │  Container Instance Subnet (10.0.6.0/24)  │            │
 │  │    (Self-hosted GitHub Actions Runner)    │            │
-│  │    ← ACRからイメージプル（完全閉域）      │            │
+│  │    ← ACRからイメージプル(完全閉域)        │            │
 │  └───────────────┬───────────────────────────┘            │
 │                  │                                         │
 │                  │ vNet Integration                        │
 │                  │                                         │
-│           ┌──────┴─────────┐                              │
-│           │  Web Apps      │                              │
-│           │  (vNet統合)    │                              │
-│           └────────────────┘                              │
+│    ┌─────────────▼───────────┐                            │
+│    │  Azure Functions        │                            │
+│    │  (Flex Consumption)     │                            │
+│    │  バックエンドAPI         │                            │
+│    └─────────────────────────┘                            │
+│           │                                                │
+│           │ Private Endpoint                               │
+│           ▼                                                │
+│    ┌──────────────────┐     ┌──────────────────┐          │
+│    │  App Service     │     │ Azure OpenAI     │          │
+│    │  (Node.js/Express)     │ AI Search        │          │
+│    │  フロントエンド   │     └──────────────────┘          │
+│    └──────────────────┘                                    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
                        │
@@ -60,7 +69,8 @@ GitHub ActionsでAzure閉域環境（vNet統合済Web Apps）へCI/CDデプロ�
 - [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step)の環境が構築済みであること
   - Virtual Network (vNet)
   - Private DNS Zones
-  - Web Apps (vNet統合済)
+  - App Service (vNet統合済、フロントエンド用)
+  - Azure Functions (Flex Consumption, vNet統合済、バックエンド用)
 - Azure CLI (`az --version`)
 - Bicep CLI (`az bicep version`)
 - GitHub アカウント
@@ -108,21 +118,22 @@ az deployment group create `
 - デプロイ用認証情報の格納
 
 ### Step 04: GitHub Actions Workflow [→](bicep/step04-github-actions/)
+- OIDC認証(Federated Credential)による安全な認証
 - GitHub Secretsの設定方法
 - サンプルアプリケーションリポジトリの利用ガイド
 - Self-hosted Runnerの仕組み理解
 - CI/CDパイプラインの構築
 
-> **📦 実際のアプリケーション**: [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) で完全なRAGアプリを提供
+> **📦 実際のアプリケーション**: [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) で完全なRAGアプリ(Node.js + Azure Functions)を提供
 
 ### 統合デプロイ [→](bicep/complete/)
 全ステップを一括でデプロイする統合版
 
 ## 📚 ドキュメント
 
-- [前提条件](docs/00-prerequisites.md)
-- [アーキテクチャ概要](docs/01-architecture.md)
-- [デプロイガイド](docs/deployment-guide.md)
+- [前提条件](docs/00-prerequisites.md) - 必要なツール、サービスプリンシパル作成、GitHub PAT取得など
+- [アーキテクチャ概要](docs/01-architecture.md) - システム構成と設計思想
+- [デプロイガイド](docs/deployment-guide.md) - ステップバイステップのデプロイ手順
 
 ## 💰 コスト
 
@@ -138,6 +149,7 @@ az deployment group create `
 > **💡 ヒント**: 
 > - Container Instancesは使用時のみ課金されます。デプロイ頻度に応じてコストが変動します。
 > - ACRのPremium SKUはPrivate Link対応に必須ですが、完全閉域環境を実現できます。
+> - 後続のアプリケーションリポジトリでは、App Service (フロントエンド)とAzure Functions (バックエンド)のコストが追加されます。
 
 ## 🛠️ トラブルシューティング
 

@@ -46,7 +46,7 @@ param tags object = {
 // Module 01: Container Instance Subnet
 // ============================================================================
 
-module runnerSubnet '../step01-runner-subnet/main.bicep' = {
+module runnerSubnet '../step02-runner-subnet/main.bicep' = {
   name: 'deploy-runner-subnet'
   params: {
     location: location
@@ -61,7 +61,7 @@ module runnerSubnet '../step01-runner-subnet/main.bicep' = {
 // Module 02: Key Vault
 // ============================================================================
 
-module keyVault '../step02-keyvault/main.bicep' = {
+module keyVault '../step03-keyvault/main.bicep' = {
   name: 'deploy-keyvault'
   params: {
     location: location

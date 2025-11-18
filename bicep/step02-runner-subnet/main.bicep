@@ -1,5 +1,5 @@
 // ============================================================================
-// Step 01: Container Instance Subnet の構築
+// Step 02: Container Instance Subnet の構築
 // ============================================================================
 // このBicepファイルは、Self-hosted GitHub Actions Runner用のSubnetを
 // 既存のVNetに追加します
