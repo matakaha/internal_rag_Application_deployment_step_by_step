@@ -32,27 +32,29 @@
 │           │                                                              │
 └───────────┼──────────────────────────────────────────────────────────────┘
             │
-            │ 1. Runner起動リクエスト
+            │ 1. ACI起動リクエスト (az container start)
+            │    ※ACRへの接続は不要!
             │
 ┌───────────▼──────────────────────────────────────────────────────────────┐
 │               Azure Virtual Network (10.0.0.0/16)                        │
 │                                                                           │
 │  ┌───────────────────────────────────────────────────────────────┐       │
-│  │      Azure Container Registry (ACR) - Step 01              │       │
+│  │      Azure Container Registry (ACR) - Step 01                 │       │
 │  │                                                                │       │
 │  │  - 事前ビルド済GitHub Runnerイメージ                          │       │
 │  │  - Private Endpoint経由でアクセス                             │       │
-│  │  - インターネット接続不要（完全閉域）                          │       │
+│  │  - 完全閉域（パブリック公開不要）                             │       │
 │  └───────────────────┬───────────────────────────────────────────┘       │
-│                      │ イメージプル (Private Endpoint経由)              │
+│                      │ イメージプル済 (Step 03で事前実施)              │
 │  ┌──────────────────▼───────────────────────────────────────┐           │
-│  │          Container Instance Subnet (10.0.6.0/24)             │       │
+│  │          Container Instance Subnet (10.0.6.0/24) - Step 02  │       │
 │  │                                                                │       │
 │  │  ┌─────────────────────────────────────────────────────┐    │       │
-│  │  │  Azure Container Instance                           │    │       │
+│  │  │  Azure Container Instance - Step 03 (事前作成済)    │    │       │
 │  │  │  (Self-hosted GitHub Actions Runner)                │    │       │
 │  │  │                                                       │    │       │
-│  │  │  - ACRからRunnerイメージをプル (閉域)              │    │       │
+│  │  │  - ACRからイメージプル済（Private Endpoint経由）    │    │       │
+│  │  │  - GitHub Actionsから起動/停止のみ制御              │    │       │
 │  │  │  - GitHub Runner登録                                │    │       │
 │  │  │  - Key Vaultからシークレット取得                    │    │       │
 │  │  │  - アプリケーションビルド                            │    │       │
@@ -64,7 +66,7 @@
 │                 │ 2. シークレット取得                                     │
 │                 │                                                         │
 │  ┌──────────────▼─────────────┐     ┌────────────────────────┐         │
-│  │      Key Vault             │     │      Web Apps          │         │
+│  │      Key Vault - Step 04   │     │      Web Apps          │         │
 │  │                            │     │  (vNet統合済)          │         │
 │  │  - デプロイ用認証情報      │     │                        │         │
 │  │  - 接続文字列              │     │  - アプリ実行          │         │
@@ -79,7 +81,7 @@
 │  │            Private Endpoint Subnet (10.0.1.0/24)            │       │
 │  │                                                               │       │
 │  │  - Key Vault Private Endpoint                                │       │
-│  │  - ACR Private Endpoint (新規追加)                           │       │
+│  │  - ACR Private Endpoint                                      │       │
 │  │  - その他サービスのPrivate Endpoint                          │       │
 │  └───────────────────────────────────────────────────────────────┘       │
 │                                                                           │

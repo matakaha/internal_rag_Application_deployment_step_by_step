@@ -1,4 +1,4 @@
-# Step 04: GitHub Actionsワークフローの構築
+# Step 05: GitHub Actionsワークフローの構築
 
 このステップでは、GitHub Actionsを使って閉域Web AppsへCI/CDデプロイするワークフローを構築します。
 
@@ -31,7 +31,7 @@
 
 ## 前提条件
 
-- Step 01, 02, 03が完了していること
+- Step 01, 02, 03, 04が完了していること
 - [前提条件ドキュメント](../../docs/00-prerequisites.md)の事前準備タスクが完了していること
   - サービスプリンシパル作成済み
   - GitHub Personal Access Token (PAT)取得済み
@@ -90,7 +90,7 @@ gh repo create <org>/<repo-name> --private --source=. --remote=origin --push
 
 | Secret名 | 内容 | 取得方法 |
 |---------|------|---------|
-| `AZURE_CREDENTIALS` | サービスプリンシパル情報 (JSON) | Step 03で格納したKey Vaultから |
+| `AZURE_CREDENTIALS` | サービスプリンシパル情報 (JSON) | Step 04で格納したKey Vaultから |
 | `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
 | `GH_PAT` | Personal Access Token | GitHub Settings |
 

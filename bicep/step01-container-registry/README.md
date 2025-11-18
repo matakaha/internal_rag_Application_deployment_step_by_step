@@ -483,7 +483,7 @@ graph LR
     D -->|Yes| E[バージョンタグ付与]
     D -->|No| A
     E --> F[ACRへプッシュ]
-    F --> G[Step03でタグ指定]
+    F --> G[Step05でタグ指定]
 ```
 
 ## 検証
@@ -673,8 +673,9 @@ COPY --from=build /app /app  # 必要なファイルのみコピー
 ACRとRunnerイメージが完成したら、次のステップに進みましょう:
 
 - [Step 02: Container Instance Subnetの構築](../step02-runner-subnet/README.md)
-- [Step 03: Key Vaultの構築](../step03-keyvault/README.md) - ACR認証情報の追加
-- [Step 04: GitHub Actionsの設定](../step04-github-actions/README.md) - ACRイメージの利用
+- [Step 03: Container Instanceの構築](../step03-container-instance/README.md) - ACRからイメージをプル
+- [Step 04: Key Vaultの構築](../step04-keyvault/README.md) - シークレット管理
+- [Step 05: GitHub Actionsの設定](../step05-github-actions/README.md) - CI/CDパイプライン
 - [デプロイガイドに戻る](../../docs/deployment-guide.md)
 
 ## 参考リンク

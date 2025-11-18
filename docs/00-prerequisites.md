@@ -207,7 +207,7 @@ winget install --id GitHub.cli
 gh auth login
 ```
 
-> **💡 ヒント**: GitHub CLIがない場合でも、GitHub Web UIから手動でSecretsを設定できます。詳細は[Step 03 - GitHub Secretsの設定](deployment-guide.md#step-03-github-actionsワークフローの構築)を参照してください。
+> **💡 ヒント**: GitHub CLIがない場合でも、GitHub Web UIから手動でSecretsを設定できます。詳細は[Step 05 - GitHub Secretsの設定](deployment-guide.md#step-05-github-actionsワークフローの構築)を参照してください。
 
 ## ネットワーク設計の考慮事項
 
@@ -453,7 +453,7 @@ Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor
 - `TENANT_ID` (Directory ID)
 - `SUBSCRIPTION_ID`
 
-これらの3つの値を**GitHub Secrets**に設定します(Step 03で実施)。
+これらの3つの値を**GitHub Secrets**に設定します(Step 05で実施)。
 
 **Client Secret方式の場合** (非推奨):
 > **⚠️ 重要**: 

@@ -183,7 +183,7 @@ Bicepモジュールが自動的に依存関係を解決し、正しい順序で
 
 ### 1. GitHub Secretsの設定
 
-🔗 **[Step 04 - GitHub Secretsの設定](../step04-github-actions/README.md#2-github-secretsの設定)**
+🔗 **[Step 05 - GitHub Secretsの設定](../step05-github-actions/README.md#2-github-secretsの設定)**
 
 Key Vaultから取得した値を使って、以下の3つのGitHub Secretsを設定します:
 - `AZURE_CREDENTIALS`
@@ -206,9 +206,10 @@ Key Vaultから取得した値を使って、以下の3つのGitHub Secretsを�
 
 独自のアプリケーションをデプロイする場合は、以下を参照してください:
 - [Step 02: Container Instance Subnetの追加](../step02-runner-subnet/README.md)
-- [Step 03: Key Vaultの構築](../step03-keyvault/README.md)
-- [Step 04: GitHub Actionsワークフロー](../step04-github-actions/README.md) - Workflow設定の詳細
-- [参考: Workflowファイルの詳細解説](../step04-github-actions/README.md#📝-参考-workflowファイルの詳細解説)
+- [Step 03: Container Instanceの構築](../step03-container-instance/README.md)
+- [Step 04: Key Vaultの構築](../step04-keyvault/README.md)
+- [Step 05: GitHub Actionsワークフロー](../step05-github-actions/README.md) - Workflow設定の詳細
+- [参考: Workflowファイルの詳細解説](../step05-github-actions/README.md#📝-参考-workflowファイルの詳細解説)
 
 ## クリーンアップ
 
@@ -238,8 +239,9 @@ az network private-endpoint delete `
 
 - [Step 01: Azure Container Registryの構築](../step01-container-registry/README.md) - ACRとRunnerイメージのビルド
 - [Step 02: Runner Subnetの構築](../step02-runner-subnet/README.md) - Container Instance用Subnet追加
-- [Step 03: Key Vaultの構築](../step03-keyvault/README.md) - シークレット管理
-- [Step 04: GitHub Actionsワークフロー](../step04-github-actions/README.md) - CI/CDパイプライン構築
+- [Step 03: Container Instanceの構築](../step03-container-instance/README.md) - Self-hosted Runner
+- [Step 04: Key Vaultの構築](../step04-keyvault/README.md) - シークレット管理
+- [Step 05: GitHub Actionsワークフロー](../step05-github-actions/README.md) - CI/CDパイプライン構築
 - [Azure Container Instances](https://learn.microsoft.com/azure/container-instances/)
 - [Azure Key Vault](https://learn.microsoft.com/azure/key-vault/)
 - [GitHub Actions Self-hosted Runners](https://docs.github.com/actions/hosting-your-own-runners)

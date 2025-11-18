@@ -293,7 +293,8 @@ snet-container-instances  10.0.6.0/24      Enabled                           Mic
 
 Container Instance用Subnetが完成したら、次のステップに進みましょう:
 
-- [Step 03: Key Vaultの構築](../step03-keyvault/README.md)
+- [Step 03: Container Instanceの構築](../step03-container-instance/README.md)
+- [Step 04: Key Vaultの構築](../step04-keyvault/README.md)
 - [デプロイガイドに戻る](../../docs/deployment-guide.md)
 
 ## 参考リンク
