@@ -1,4 +1,4 @@
-# Step 05: GitHub Actionsワークフローの構築
+# Step 04: GitHub Actionsワークフローの構築
 
 このステップでは、GitHub Actionsを使って閉域Web AppsへCI/CDデプロイするワークフローを構築します。
 
@@ -31,7 +31,7 @@
 
 ## 前提条件
 
-- Step 01, 02, 03, 04が完了していること
+- Step 01, 02, 03が完了していること
 - [前提条件ドキュメント](../../docs/00-prerequisites.md)の事前準備タスクが完了していること
   - サービスプリンシパル作成済み
   - GitHub Personal Access Token (PAT)取得済み

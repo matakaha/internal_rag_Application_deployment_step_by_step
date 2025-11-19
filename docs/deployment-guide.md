@@ -193,70 +193,7 @@ az network vnet subnet show `
 
 ---
 
-### Step 03: Container Instanceの構築
-
-**学習内容**: Self-hosted Runner用Azure Container Instance(ACI)の事前作成、ACRからのイメージプル、Managed Identity認証
-
-> **💡 なぜ事前に作成?**: GitHub ActionsワークフローでACIを作成する場合、ACRへのアクセスが必要になりACRをパブリックに公開する必要があります。ACIを事前に作成しておくことで、vNet内のPrivate Endpoint経由でACRからイメージをプルでき、ACRを完全閉域に保つことができます。
-
-```powershell
-cd bicep/step03-container-instance
-
-# パラメータファイルの確認・編集
-notepad parameters.bicepparam
-# acrName を Step 01で作成したACR名に設定
-
-# デプロイ
-az deployment group create `
-  --resource-group $RESOURCE_GROUP `
-  --template-file main.bicep `
-  --parameters parameters.bicepparam
-
-# デプロイ結果の確認
-$ACI_NAME = az deployment group show `
-  --resource-group $RESOURCE_GROUP `
-  --name main `
-  --query properties.outputs.containerInstanceName.value `
-  --output tsv
-
-az container show `
-  --resource-group $RESOURCE_GROUP `
-  --name $ACI_NAME `
-  --query "{Name:name, State:instanceView.state, Subnet:subnetIds[0].id}"
-```
-
-**動作確認**:
-
-```powershell
-# Managed Identityの確認
-az container show `
-  --resource-group $RESOURCE_GROUP `
-  --name $ACI_NAME `
-  --query "identity.{Type:type, PrincipalId:principalId}"
-
-# ACR Pull権限の確認
-$PRINCIPAL_ID = az container show `
-  --resource-group $RESOURCE_GROUP `
-  --name $ACI_NAME `
-  --query "identity.principalId" `
-  --output tsv
-
-az role assignment list `
-  --assignee $PRINCIPAL_ID `
-  --scope $(az acr show --name $ACR_NAME --query id --output tsv) `
-  --query "[].{Role:roleDefinitionName}" `
-  --output table
-```
-
-**期待される出力**: `AcrPull` ロールが表示される
-
-**所要時間**: 約3-5分
-
-**詳細**: [Step 03 README](../bicep/step03-container-instance/README.md)
-
----
-
-### Step 04: Key Vaultの構築
+### Step 03: Key Vaultの構築
 
 **学習内容**: Key Vault作成、Private Endpoint統合、アクセスポリシー設定、シークレット管理
 
@@ -266,7 +203,7 @@ az role assignment list `
 > 
 > 📚 **別リポジトリ「[internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step)」の [VPN接続セットアップガイド](https://github.com/matakaha/internal_rag_step_by_step/blob/main/docs/vpn-setup-guide.md)** で説明されている **Step 8**(DNS Private Resolver作成)および **Step 9**(VPN クライアント構成ファイルのDNS設定)を完了してください。
 > 
-> **DNS設定が未完了の場合**は、[Step 04 README](../bicep/step04-keyvault/README.md#重要-vpn接続時のdns設定について) の「DNS設定が未完了の場合の対処法」を参照してください。
+> **DNS設定が未完了の場合**は、[Step 03 README](../bicep/step03-keyvault/README.md#重要-vpn接続時のdns設定について) の「DNS設定が未完了の場合の対処法」を参照してください。
 
 #### 4-1. オブジェクトIDの取得
 
@@ -278,7 +215,7 @@ echo "Your Object ID: $OBJECT_ID"
 
 #### 4-2. パラメータファイルの編集
 
-`bicep/step04-keyvault/parameters.bicepparam` を開いて、`adminObjectId` を設定:
+`bicep/step03-keyvault/parameters.bicepparam` を開いて、`adminObjectId` を設定:
 
 ```bicep
 param adminObjectId = '<YOUR_OBJECT_ID>'
@@ -287,7 +224,7 @@ param adminObjectId = '<YOUR_OBJECT_ID>'
 #### 4-3. デプロイ実行
 
 ```powershell
-cd bicep/step04-keyvault
+cd bicep/step03-keyvault
 
 # デプロイ
 az deployment group create `
@@ -352,23 +289,23 @@ az keyvault secret list `
 
 </details>
 
-詳細な手順は **[Step 04 README - シークレットの設定](../bicep/step04-keyvault/README.md#シークレットの設定)** を参照してください。
+詳細な手順は **[Step 03 README - シークレットの設定](../bicep/step03-keyvault/README.md#シークレットの設定)** を参照してください。
 
 **所要時間**: 約5-7分
 
-**詳細**: [Step 04 README](../bicep/step04-keyvault/README.md)
+**詳細**: [Step 03 README](../bicep/step03-keyvault/README.md)
 
 ---
 
-### Step 05: GitHub Actions Workflowの構築
+### Step 04: GitHub Actions Workflowの構築
 
-**学習内容**: GitHub Actions、Self-hosted Runner起動・停止、CI/CDパイプライン、OIDC認証
+**学習内容**: GitHub Actions、Self-hosted Runner動的作成、CI/CDパイプライン、OIDC認証
 
-> **📦 重要**: Step 05では、実際のアプリケーションコードとWorkflowファイルは [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) を使用することを推奨します。
+> **📦 重要**: Step 04では、実際のアプリケーションコードとWorkflowファイルは [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) を使用することを推奨します。
 
 > **🔐 推奨認証方式**: GitHub ActionsからAzureへの認証に**Federated Identity (OIDC)**を使用します。Client Secret方式と比較して、長期的なシークレット管理が不要でより安全です。
 
-> **✅ ACIの事前作成**: Step 03でACIを事前に作成済みのため、GitHub ActionsワークフローではACIの起動・停止のみを行います。ACRへの接続は不要で、ACRは完全閉域のまま維持されます。
+> **🚀 動的ACI作成**: GitHub ActionsワークフローでAzure Container Instanceを動的に作成・削除します。これによりコスト最適化と並列実行が可能になります。
 
 #### 3-1. サンプルリポジトリを使用する場合（推奨）
 
@@ -384,7 +321,7 @@ az keyvault secret list `
    
    または
    
-   🔗 **[Step 05 README - GitHub Secretsの設定](../bicep/step05-github-actions/README.md#2-github-secretsの設定)** を参照
+   🔗 **[Step 04 README - GitHub Secretsの設定](../bicep/step04-github-actions/README.md#2-github-secretsの設定)** を参照
 
 3. **サンプルリポジトリのガイドに従う**
    - [Step 1: 環境準備](https://github.com/matakaha/internal_rag_Application_sample_repo/blob/main/docs/step01-setup-environment.md)
@@ -403,16 +340,16 @@ cd <your-app-repo>
 
 **GitHub Secrets設定**
 
-🔗 **[Step 05 README - GitHub Secretsの設定](../bicep/step05-github-actions/README.md#2-github-secretsの設定)** を参照
+🔗 **[Step 04 README - GitHub Secretsの設定](../bicep/step04-github-actions/README.md#2-github-secretsの設定)** を参照
 
 **Workflowファイル作成**
 
 サンプルリポジトリの `.github/workflows/deploy-functions.yml` を参考にしてください。
-詳細は [Step 05 README - 参考: Workflowファイルの詳細解説](../bicep/step05-github-actions/README.md#📝-参考-workflowファイルの詳細解説) を参照してください。
+詳細は [Step 04 README - 参考: Workflowファイルの詳細解説](../bicep/step04-github-actions/README.md#📝-参考-workflowファイルの詳細解説) を参照してください。
 
 **所要時間**: 約10-15分(初回デプロイ含む)
 
-**詳細**: [Step 05 README](../bicep/step05-github-actions/README.md)
+**詳細**: [Step 04 README](../bicep/step04-github-actions/README.md)
 
 ---
 
@@ -431,11 +368,11 @@ az network vnet subnet show `
   --vnet-name "vnet-internal-rag-$ENV_NAME" `
   --name snet-container-instances
 
-# Container Instanceの確認
-az container show `
-  --resource-group $RESOURCE_GROUP `
-  --name "aci-github-runner-$ENV_NAME" `
-  --query "{Name:name, State:instanceView.state, Identity:identity.type}"
+# Container Instance一覧の確認(動的作成のため実行時のみ存在)
+az container list \
+  --resource-group $RESOURCE_GROUP \
+  --query "[].{Name:name, State:instanceView.state, Identity:identity.type}" \
+  --output table
 
 # Key Vaultの確認
 az keyvault show --name "kv-gh-runner-$ENV_NAME"

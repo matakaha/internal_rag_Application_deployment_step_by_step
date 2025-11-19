@@ -170,7 +170,7 @@ VPN設定が完了していない場合は、以下の方法でリソースに�
 - **Azure Cloud Shell**: Portal上のCloud Shellから操作
 - **一時的なパブリックアクセス**: セキュリティリスクがあるため非推奨
 
-詳細は[デプロイガイド - Step 02](deployment-guide.md#step-02-key-vaultの構築)を参照してください。
+詳細は[デプロイガイド - Step 03](deployment-guide.md#step-03-key-vaultの構築)を参照してください。
 
 ### 5. ローカル開発環境
 
@@ -207,7 +207,7 @@ winget install --id GitHub.cli
 gh auth login
 ```
 
-> **💡 ヒント**: GitHub CLIがない場合でも、GitHub Web UIから手動でSecretsを設定できます。詳細は[Step 05 - GitHub Secretsの設定](deployment-guide.md#step-05-github-actionsワークフローの構築)を参照してください。
+> **💡 ヒント**: GitHub CLIがない場合でも、GitHub Web UIから手動でSecretsを設定できます。詳細は[Step 04 - GitHub Secretsの設定](deployment-guide.md#step-04-github-actionsワークフローの構築)を参照してください。
 
 ## ネットワーク設計の考慮事項
 
@@ -453,7 +453,7 @@ Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor
 - `TENANT_ID` (Directory ID)
 - `SUBSCRIPTION_ID`
 
-これらの3つの値を**GitHub Secrets**に設定します(Step 05で実施)。
+これらの3つの値を**GitHub Secrets**に設定します(Step 04で実施)。
 
 **Client Secret方式の場合** (非推奨):
 > **⚠️ 重要**: 

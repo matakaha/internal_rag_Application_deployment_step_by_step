@@ -1,4 +1,4 @@
-# Step 04: Key Vaultの構築
+# Step 03: Key Vaultの構築
 
 このステップでは、デプロイ用認証情報を安全に管理するKey Vaultを構築します。
 
@@ -62,8 +62,8 @@ param adminObjectId = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
 $RESOURCE_GROUP = "rg-internal-rag-dev"
 $ENV_NAME = "dev"
 
-# Step 04ディレクトリに移動
-cd bicep/step04-keyvault
+# Step 03ディレクトリに移動
+cd bicep/step03-keyvault
 
 # デプロイ実行
 az deployment group create `
@@ -325,7 +325,7 @@ az keyvault secret set `
 
 Container InstanceにManaged Identityを付与し、ACRへのプル権限を与える方式です。Key Vaultへのシークレット格納は**不要**です。
 
-**手順はStep 05で実施します。**
+**手順はStep 04で実施します。**
 
 #### 方法2: ACR Admin Userを利用（テスト・開発環境のみ）
 
@@ -509,9 +509,9 @@ accessPolicies: [
 - デプロイ実行ユーザーに完全な権限を付与
 - シークレットの作成・更新・削除が可能
 
-#### Container Instance用権限（後で追加）
+#### Container Instance用権限（動的作成時に自動付与）
 
-Step 03でContainer InstanceのマネージドIDに対して、シークレット取得権限を付与します。
+GitHub Actionsワークフローで動的に作成されるContainer Instanceには、必要に応じてManaged Identityとアクセス権限を付与できます。
 
 ## セキュリティベストプラクティス
 
@@ -629,8 +629,8 @@ Key Vaultが完成したら、次のステップに進みましょう:
 
 ### オプション2: 独自アプリケーションを開発
 
-- [Step 03: Container Instanceの構築](../step03-container-instance/README.md) - ACIとManaged Identity
-- [Step 05: GitHub Actions Workflowの構築](../step05-github-actions/README.md) - Workflow設定の詳細
+- [Step 02: Container Instance Subnetの追加](../step02-runner-subnet/README.md) - ACI用Subnet設定
+- [Step 04: GitHub Actions Workflowの構築](../step04-github-actions/README.md) - Workflow設定の詳細
 - [デプロイガイド](../../docs/deployment-guide.md) - 全体の流れ
 
 ## 参考リンク

@@ -111,19 +111,13 @@ az deployment group create `
 - NSG設定
 - 既存vNetへの統合
 
-### Step 03: Container Instance構築 [→](bicep/step03-container-instance/)
-- Self-hosted Runner用ACIの事前作成
-- ACRからのイメージプル(Private Endpoint経由)
-- Managed Identity認証
-- ACR Pull権限の付与
-
-### Step 04: Key Vault構築 [→](bicep/step04-keyvault/)
+### Step 03: Key Vault構築 [→](bicep/step03-keyvault/)
 - Key Vaultの作成
 - Private Endpoint設定
 - アクセスポリシー設定
 - デプロイ用認証情報の格納
 
-### Step 05: GitHub Actions Workflow [→](bicep/step05-github-actions/)
+### Step 04: GitHub Actions Workflow [→](bicep/step04-github-actions/)
 - OIDC認証(Federated Credential)による安全な認証
 - GitHub Secretsの設定方法
 - サンプルアプリケーションリポジトリの利用ガイド
