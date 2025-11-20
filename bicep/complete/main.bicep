@@ -3,8 +3,9 @@
 // ============================================================================
 // このBicepファイルは、GitHub Actionsを使用した閉域Web Appsへの
 // アプリケーションデプロイに必要なすべてのリソースを一度にデプロイします
-// - Container Instance Subnet (Self-hosted Runner用)
-// - Key Vault with Private Endpoint
+// - Step 01: Azure Container Registry (ACR)
+// - Step 02: Container Instance Subnet (Self-hosted Runner用)
+// - Step 03: Key Vault with Private Endpoint
 // - Network Security Group
 
 targetScope = 'resourceGroup'
@@ -35,6 +36,32 @@ param keyVaultName string = 'kv-gh-runner-${environmentName}'
 @description('現在のユーザーのオブジェクトID（初期管理者用）')
 param adminObjectId string
 
+@description('ACR名（グローバルで一意、小文字英数字のみ、5-50文字）')
+@minLength(5)
+@maxLength(50)
+param acrName string
+
+@description('ACRのSKU（Private LinkにはPremium必須）')
+@allowed([
+  'Basic'
+  'Standard'
+  'Premium'
+])
+param acrSku string = 'Premium'
+
+@description('Private Endpoint を配置する既存のサブネット名')
+param privateEndpointSubnetName string = 'snet-private-endpoints'
+
+@description('ACRの管理者ユーザーを有効化（非推奨、Managed Identity推奨）')
+param enableAdminUser bool = false
+
+@description('パブリックネットワークアクセスの制御')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param publicNetworkAccess string = 'Disabled'
+
 @description('タグ')
 param tags object = {
   Environment: environmentName
@@ -43,7 +70,25 @@ param tags object = {
 }
 
 // ============================================================================
-// Module 01: Container Instance Subnet
+// Step 01: Azure Container Registry (ACR)
+// ============================================================================
+
+module acr '../step01-container-registry/main.bicep' = {
+  name: 'deploy-acr'
+  params: {
+    location: location
+    environmentName: environmentName
+    acrName: acrName
+    vnetName: vnetName
+    privateEndpointSubnetName: privateEndpointSubnetName
+    acrSku: acrSku
+    enableAdminUser: enableAdminUser
+    publicNetworkAccess: publicNetworkAccess
+  }
+}
+
+// ============================================================================
+// Step 02: Container Instance Subnet
 // ============================================================================
 
 module runnerSubnet '../step02-runner-subnet/main.bicep' = {
@@ -55,10 +100,13 @@ module runnerSubnet '../step02-runner-subnet/main.bicep' = {
     containerSubnetPrefix: containerSubnetPrefix
     tags: tags
   }
+  dependsOn: [
+    acr
+  ]
 }
 
 // ============================================================================
-// Module 02: Key Vault
+// Step 03: Key Vault
 // ============================================================================
 
 module keyVault '../step03-keyvault/main.bicep' = {
@@ -79,6 +127,15 @@ module keyVault '../step03-keyvault/main.bicep' = {
 // ============================================================================
 // 出力
 // ============================================================================
+
+@description('ACRのリソースID')
+output acrId string = acr.outputs.acrId
+
+@description('ACR名')
+output acrName string = acr.outputs.acrName
+
+@description('ACRのLogin Server')
+output acrLoginServer string = acr.outputs.acrLoginServer
 
 @description('Container Instance SubnetのリソースID')
 output containerSubnetId string = runnerSubnet.outputs.containerSubnetId

@@ -4,18 +4,17 @@
 
 ## 概要
 
-Step 01-02を個別にデプロイする代わりに、このディレクトリの`main.bicep`を使用することで、すべてのリソースを一度にデプロイできます。
+Step 01-03を個別にデプロイする代わりに、このディレクトリの`main.bicep`を使用することで、すべてのリソースを一度にデプロイできます。
 
 ## 作成されるリソース
 
 | カテゴリ | リソース | 説明 |
 |---------|---------|------|
+| **Container** | Azure Container Registry (ACR) | Runnerイメージ格納用のACR (Private Endpoint付き) |
 | **Networking** | Container Instance Subnet | Self-hosted Runner実行用のSubnet (10.0.6.0/24) |
 | **Networking** | Network Security Group | Subnet用のセキュリティルール |
 | **Security** | Key Vault | GitHub Actionsシークレット管理用 |
 | **Security** | Private Endpoint | Key Vault用Private Endpoint |
-
-> **Note**: Azure Container Registry (ACR)はStep 01で別途構築します。完全閉域環境を実現するため、ACR経由でRunnerコンテナイメージを配信します。
 
 ## 前提条件
 
@@ -24,8 +23,8 @@ Step 01-02を個別にデプロイする代わりに、このディレクトリ�
 このデプロイには、`internal_rag_step_by_step` で構築された以下のリソースが必要です:
 
 - **VNet**: 10.0.0.0/16
-- **Private Endpoint Subnet**: 10.0.1.0/24
-- **Private DNS Zone**: `privatelink.vaultcore.azure.net`
+- **Private Endpoint Subnet**: 10.0.1.0/24 (ACR/Key VaultのPrivate Endpoint配置用)
+- **Private DNS Zone**: `privatelink.vaultcore.azure.net` および `privatelink.azurecr.io`
 
 ### 必要な権限
 
@@ -106,8 +105,8 @@ az network private-endpoint list `
 
 ### 時間の節約
 
-- **ステップ版**: 各ステップを個別にデプロイ → 約15-20分
-- **統合版**: 一度にデプロイ → 約10-15分
+- **ステップ版**: 各ステップを個別にデプロイ → 約20-25分
+- **統合版**: 一度にデプロイ → 約15-20分
 
 ### 依存関係の自動管理
 
@@ -119,10 +118,10 @@ Bicepモジュールが自動的に依存関係を解決し、正しい順序で
 
 ## ステップ版との比較
 
-| 項目 | ステップ版 (Step 01-02) | 統合版 (complete) |
+| 項目 | ステップ版 (Step 01-03) | 統合版 (complete) |
 |------|------------------------|-------------------|
 | **用途** | 学習・段階的な理解 | 本番環境・効率重視 |
-| **デプロイ時間** | 約15-20分 | 約10-15分 |
+| **デプロイ時間** | 約20-25分 | 約15-20分 |
 | **柔軟性** | 各ステップで調整可能 | パラメータで調整 |
 | **トラブルシューティング** | ステップ単位で切り分け | モジュール単位で切り分け |
 

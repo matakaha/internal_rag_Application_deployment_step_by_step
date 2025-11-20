@@ -16,11 +16,19 @@ param environmentName = 'dev'
 // internal_rag_step_by_step で作成されたVNetを指定してください
 param vnetName = 'vnet-internal-rag-dev'
 
-// Container Instance Subnetのアドレスプレフィックス
+// Step 01: Azure Container Registry (ACR)
+param acrName = 'acrinternalragdev'  // グローバルで一意な名前に変更してください
+param acrSku = 'Premium'  // Private LinkにはPremium必須
+param privateEndpointSubnetName = 'snet-private-endpoints'
+param enableAdminUser = false  // Managed Identity推奨
+param publicNetworkAccess = 'Disabled'  // 本番環境推奨、開発時は'Enabled'も可
+
+// Step 02: Container Instance Subnet
 // 既存のSubnetと重複しないように設定してください
 // 注: 10.0.5.0/28 は DNS Private Resolver用に使用されています
 param containerSubnetPrefix = '10.0.6.0/24'
 
+// Step 03: Key Vault
 // Key Vault名 (グローバルで一意、3-24文字)
 // 英数字とハイフンのみ使用可能
 param keyVaultName = 'kv-gh-runner-dev'

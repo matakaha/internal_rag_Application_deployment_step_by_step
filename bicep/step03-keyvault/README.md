@@ -133,15 +133,6 @@ Namespace                NameServers
     <dnsservers>
       <dnsserver>10.0.5.4</dnsserver>
     </dnsservers>
-    <dnssuffixes>
-      <dnssuffix>.azurewebsites.net</dnssuffix>
-      <dnssuffix>.search.windows.net</dnssuffix>
-      <dnssuffix>.blob.core.windows.net</dnssuffix>
-      <dnssuffix>.openai.azure.com</dnssuffix>
-      <!-- ⬇️ この2行を追加 -->
-      <dnssuffix>.vault.azure.net</dnssuffix>
-      <dnssuffix>.vaultcore.azure.net</dnssuffix>
-    </dnssuffixes>
   </clientconfig>
 </AzureVpnProfile>
 ```
