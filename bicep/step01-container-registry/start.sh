@@ -1,31 +1,39 @@
 #!/bin/bash
 set -e
 
-# 必須環境変数の確認
-if [ -z "$GITHUB_TOKEN" ]; then
-    echo "Error: GITHUB_TOKEN is not set"
+# デバッグ情報
+echo "=== GitHub Runner Startup ==="
+echo "Runner Name: ${RUNNER_NAME:-runner-$(hostname)}"
+echo "Repository URL: ${RUNNER_REPOSITORY_URL}"
+echo "Work Directory: ${RUNNER_WORK_DIRECTORY:-_work}"
+echo "Labels: ${RUNNER_LABELS:-self-hosted}"
+
+# ネットワーク接続テスト
+echo "=== Network Connectivity Test ==="
+if curl -s --max-time 10 -o /dev/null -w "%{http_code}" https://github.com | grep -q "200\|301\|302"; then
+    echo "✅ GitHub.com is reachable"
+else
+    echo "❌ Cannot reach GitHub.com"
+    echo "Testing DNS resolution..."
+    nslookup github.com || echo "DNS resolution failed"
     exit 1
 fi
 
-if [ -z "$GITHUB_REPOSITORY" ]; then
-    echo "Error: GITHUB_REPOSITORY is not set"
+# 必須環境変数チェック
+if [ -z "$RUNNER_TOKEN" ] || [ -z "$RUNNER_REPOSITORY_URL" ]; then
+    echo "❌ Error: RUNNER_TOKEN and RUNNER_REPOSITORY_URL must be set"
     exit 1
 fi
 
-# Runner登録トークンの取得
-REGISTRATION_TOKEN=$(curl -sX POST \
-    -H "Authorization: token ${GITHUB_TOKEN}" \
-    "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners/registration-token" \
-    | jq -r .token)
-
-# Runnerの設定
+echo "=== Configuring GitHub Runner ==="
 ./config.sh \
-    --url "https://github.com/${GITHUB_REPOSITORY}" \
-    --token "${REGISTRATION_TOKEN}" \
-    --name "azure-runner-$(hostname)" \
-    --labels "azure,self-hosted" \
+    --url "${RUNNER_REPOSITORY_URL}" \
+    --token "${RUNNER_TOKEN}" \
+    --name "${RUNNER_NAME:-runner-$(hostname)}" \
+    --work "${RUNNER_WORK_DIRECTORY:-_work}" \
+    --labels "${RUNNER_LABELS:-self-hosted}" \
     --unattended \
-    --ephemeral
+    --replace
 
-# Runnerの起動
+echo "=== Starting GitHub Runner ==="
 ./run.sh
