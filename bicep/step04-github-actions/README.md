@@ -90,7 +90,7 @@ gh repo create <org>/<repo-name> --private --source=. --remote=origin --push
 
 | Secret名 | 内容 | 取得方法 |
 |---------|------|---------|
-| `AZURE_CREDENTIALS` | サービスプリンシパル情報 (JSON) | Step 04で格納したKey Vaultから |
+| `AZURE_CREDENTIALS` | サービスプリンシパル情報 (JSON) | Step 03で格納したKey Vaultから |
 | `KEY_VAULT_NAME` | Key Vault名 | `kv-gh-runner-<環境名>` |
 | `GH_PAT` | Personal Access Token | GitHub Settings |
 

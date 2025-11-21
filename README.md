@@ -67,21 +67,25 @@ GitHub ActionsでAzure閉域環境（vNet統合済Web Apps）へCI/CDデプロ�
 
 ## 🚀 クイックスタート
 
-> **📘 初めての方へ**: まず [前提条件](docs/00-prerequisites.md) を確認し、必要な環境とツールが揃っているか確認してください。
+> **📘 初めての方へ**: 
+> 1. まず [前提条件](docs/00-prerequisites.md) を確認し、必要な環境とツールが揃っているか確認してください
+> 2. 次に [アーキテクチャ概要](docs/01-architecture.md) でシステム全体を理解してください
+> 3. [デプロイガイド](docs/deployment-guide.md) に従って段階的に構築していきます
 
 ### 前提条件
 
 - [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step)の環境が構築済みであること
-  - Virtual Network (vNet)
-  - **NAT Gateway (Step 01 に統合)**
-  - Private DNS Zones
-  - App Service (vNet統合済、フロントエンド用)
-  - Azure Functions (Flex Consumption, vNet統合済、バックエンド用)
-  - **ACR ファイアウォールに NAT Gateway の Public IP が追加済み**
-- Azure CLI (`az --version`)
-- Bicep CLI (`az bicep version`)
-- GitHub アカウント
-- Azure サブスクリプション（共同作成者権限）
+  - Virtual Network (vNet) - 閉域ネットワーク基盤
+  - NAT Gateway - アウトバウンド通信用固定IP（**本Step 01に統合済み**）
+  - Private DNS Zones - プライベート名前解決
+  - App Service (vNet統合済) - フロントエンド用Webアプリ
+  - Azure Functions (Flex Consumption, vNet統合済) - バックエンドAPI
+- Azure CLI (`az --version`) - 2.50.0以上推奨
+- Bicep CLI (`az bicep version`) - 最新版推奨
+- GitHub アカウント - リポジトリとActionsの利用
+- Azure サブスクリプション - 共同作成者権限以上
+
+> **⚠️ 注意**: NAT Gateway は internal_rag_step_by_step の Step 01 で構築されています。本リポジトリの Step 01 では、NAT Gateway の Public IP を ACR のファイアウォールに登録する手順が含まれます。
 
 詳細は [前提条件](docs/00-prerequisites.md) を参照してください。
 
@@ -108,30 +112,61 @@ az deployment group create `
 
 ## 📖 学習ステップ
 
+このガイドは4つのステップで構成されています。各ステップは独立しており、段階的に学習できます。
+
 ### Step 01: Azure Container Registryの構築 [→](bicep/step01-container-registry/)
+**目的**: GitHub Actions Self-hosted Runner用のコンテナーイメージを管理するACRを構築
+
+**学習内容**:
 - ACRの作成とPrivate Endpoint統合
-- GitHub Actions RunnerのDockerイメージビルド
-- 完全閉域環境でのコンテナー実行
+- NAT Gateway Public IPのファイアウォール登録
+- ACR Tasksを使った完全閉域環境でのイメージビルド
+- セキュアなコンテナーレジストリの運用
+
+**所要時間**: 約15-20分
 
 ### Step 02: Self-hosted Runner用Subnet追加 [→](bicep/step02-runner-subnet/)
-- Container Instance用サブネット追加
-- NSG設定
-- 既存vNetへの統合
+**目的**: Container Instance（Self-hosted Runner）を実行するための専用サブネット構築
+
+**学習内容**:
+- 既存vNetへのSubnet追加方法
+- Container Instance用のSubnet委任設定
+- NSGによるネットワークセキュリティ制御
+- Service Endpointの設定
+
+**所要時間**: 約5-7分
 
 ### Step 03: Key Vault構築 [→](bicep/step03-keyvault/)
-- Key Vaultの作成
-- Private Endpoint設定
-- アクセスポリシー設定
-- デプロイ用認証情報の格納
+**目的**: デプロイ用認証情報やシークレットを安全に管理するKey Vaultの構築
+
+**学習内容**:
+- Key Vaultの作成とアクセスポリシー設定
+- Private Endpoint経由のセキュアアクセス
+- Azure認証情報（OIDC/Client Secret）の管理
+- GitHub PAT等のシークレット管理
+- VPN接続時のDNS設定（Private DNS Resolver統合）
+
+**所要時間**: 約10-15分
 
 ### Step 04: GitHub Actions Workflow [→](bicep/step04-github-actions/)
-- OIDC認証(Federated Credential)による安全な認証
-- GitHub Secretsの設定方法
-- サンプルアプリケーションリポジトリの利用ガイド
-- Self-hosted Runnerの仕組み理解
-- CI/CDパイプラインの構築
+**目的**: GitHub Actionsを使った閉域環境へのCI/CDパイプライン構築
 
-> **📦 実際のアプリケーション**: [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) で完全なRAGアプリ(Node.js + Azure Functions)を提供
+**学習内容**:
+- Federated Identity (OIDC) による安全なAzure認証
+- GitHub Secretsの適切な設定方法
+- Self-hosted Runnerの動的作成・削除の仕組み
+- Container Instanceを使ったvNet内Runner実行
+- サンプルアプリケーションリポジトリの活用方法
+
+**所要時間**: 約15-20分（初回デプロイ含む）
+
+> **📦 実際のアプリケーション**: [internal_rag_Application_sample_repo](https://github.com/matakaha/internal_rag_Application_sample_repo) で完全なRAGアプリ(Node.js Express + Azure Functions Python)とデプロイワークフローを提供しています。
+
+---
+
+**全ステップ合計所要時間**: 約45-60分
+
+> **💡 学習のヒント**: 各ステップは独立しており、中断・再開が可能です。1日で完了させる必要はありません。
 
 ### 統合デプロイ [→](bicep/complete/)
 全ステップを一括でデプロイする統合版

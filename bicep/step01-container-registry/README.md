@@ -121,7 +121,48 @@ $ACR_NAME = az deployment group show `
 echo "ACR_NAME: $ACR_NAME"
 ```
 
-### 4. Web App用ベースイメージのインポート
+### 4. ACR ファイアウォール設定（NAT Gateway IP許可）
+
+NAT Gateway の Public IP を ACR のネットワークルールに追加します。これにより、ACR Tasks が NAT Gateway 経由で ACR にアクセス可能になり、パブリックアクセスの一時的な有効化が不要になります。
+
+```powershell
+# NAT Gateway の Public IP を取得
+$NAT_GW_NAME = "natgw-internal-rag-$ENV_NAME"
+
+# NAT Gateway に紐づく Public IP の ID を取得
+$PUBLIC_IP_ID = az network nat gateway show `
+  --resource-group $RESOURCE_GROUP `
+  --name $NAT_GW_NAME `
+  --query "publicIpAddresses[0].id" `
+  --output tsv
+
+# Public IP アドレスを取得
+$NAT_IP = az network public-ip show `
+  --ids $PUBLIC_IP_ID `
+  --query ipAddress `
+  --output tsv
+
+echo "NAT Gateway Public IP: $NAT_IP"
+
+# ACR のネットワークルールに追加（CIDR表記で）
+az acr network-rule add `
+  --name $ACR_NAME `
+  --ip-address "$NAT_IP/32"
+
+# 確認
+az acr network-rule list --name $ACR_NAME --output table
+```
+
+**期待される出力**:
+```
+Action    IpAddressOrRange
+--------  ------------------
+Allow     <NAT Gateway Public IP>/32
+```
+
+> **💡 重要**: この設定により、以降の手順（イメージビルド、インポート等）でACRのパブリックアクセスを有効化する必要がなくなります。
+
+### 5. Web App用ベースイメージのインポート
 
 閉域環境でWeb App(フロントエンド)のコンテナイメージをビルドするため、Node.jsベースイメージを事前にACRにインポートします。
 
@@ -152,7 +193,7 @@ Result
 
 > **Note**: このイメージはStep 04でWeb Appのコンテナ化デプロイに使用されます。
 
-### 5. Runnerコンテナーイメージのビルド
+### 6. Runnerコンテナーイメージのビルド
 
 2つの方法があります:
 
@@ -332,7 +373,7 @@ az acr update --name $ACR_NAME --public-network-enabled false
 
 ---
 
-### 6. イメージの確認
+### 7. イメージの確認
 
 ACR 内のイメージを確認します:
 

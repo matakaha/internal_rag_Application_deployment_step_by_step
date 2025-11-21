@@ -108,69 +108,113 @@
 
 ## デプロイフロー
 
-### 1. Workflow起動
+### 1. 全体フロー図
 
 ```mermaid
 sequenceDiagram
     participant Dev as 開発者
     participant GH as GitHub
-    participant ACR as Container Registry
-    participant ACI as Container Instance
-    participant KV as Key Vault
-    participant App as Web Apps
+    participant ACR as Container Registry<br/>(Private Endpoint)
+    participant ACI as Container Instance<br/>(Self-hosted Runner)
+    participant KV as Key Vault<br/>(Private Endpoint)
+    participant App as Web Apps<br/>(vNet統合)
 
-    Dev->>GH: git push
-    GH->>GH: Workflow開始
-    GH->>ACI: Container Instance起動リクエスト
-    ACI->>ACR: Runnerイメージをプル (Private Endpoint経由)
+    Note over Dev,App: 事前準備: ACRにRunnerイメージをビルド済み
+
+    Dev->>GH: git push (main branch)
+    GH->>GH: Workflow開始 (ubuntu-latest)
+    GH->>ACI: Azure CLIでContainer Instance作成<br/>vNetサブネット指定
+    ACI->>ACR: Runnerイメージをプル<br/>(Private Endpoint経由、完全閉域)
     ACR-->>ACI: イメージ返却
-    ACI->>GH: Runner登録
-    ACI->>KV: デプロイ用シークレット取得
-    KV-->>ACI: 認証情報返却
-    ACI->>ACI: アプリケーションビルド
-    ACI->>App: デプロイ実行
+    ACI->>GH: Self-hosted Runnerとして登録
+    
+    Note over ACI: Self-hosted Runnerジョブ開始
+    
+    ACI->>KV: Azure認証情報取得<br/>(Private Endpoint経由)
+    KV-->>ACI: CLIENT_ID, TENANT_ID等を返却
+    ACI->>ACI: アプリケーションコードビルド
+    ACI->>App: Publish Profileでデプロイ<br/>(vNet経由、閉域通信)
     App-->>ACI: デプロイ完了
     ACI->>GH: ジョブ完了報告
-    GH->>ACI: Container Instance削除
+    
+    GH->>ACI: Container Instance削除<br/>(コスト最適化)
 ```
 
-### 2. 詳細ステップ
+### 2. 詳細ステップ解説
 
-#### Step 1: Azure Container Registry (ACR)の作成
-- Azure Container Registry (ACR)の作成
-- GitHub Actions RunnerのDockerイメージをビルド
-- イメージをACRにプッシュ
-- ACR Private Endpointの設定
+#### Step 1: ACR構築（事前準備）
+**目的**: Self-hosted Runnerコンテナーイメージの事前ビルドと格納
 
-> **💡 推奨理由**: 事前にイメージをビルドすることで、Container Instance起動時のインターネット接続を不要にし、完全閉域環境を実現します。
+**手順**:
+1. Azure Container Registry (ACR) を Premium SKU で作成
+2. ACR用 Private Endpoint を設定（完全閉域化）
+3. NAT Gateway の Public IP を ACR ファイアウォールに登録
+4. ACR Tasks でRunnerイメージをビルド（ローカルDocker不要）
+5. ビルドしたイメージをACRに格納
+
+**メリット**:
+- ✅ Container Instance起動時にインターネット接続不要
+- ✅ 完全閉域環境でRunner実行可能
+- ✅ NAT Gateway経由でACR Tasksが実行可能（パブリック公開不要）
+- ✅ イメージバージョン管理が容易
 
 #### Step 2: Workflow起動トリガー
-- `git push` または手動トリガー
-- GitHub Actionsワークフローが起動
+**トリガー方法**:
+- `main`ブランチへの`git push`
+- Pull Requestのマージ
+- 手動トリガー (`workflow_dispatch`)
+- スケジュール実行 (`schedule`)
 
-#### Step 2: Workflow起動トリガー
-- `git push` または手動トリガー
-- GitHub Actionsワークフローが起動
+**実行環境**: GitHub-hosted Runner (`ubuntu-latest`) で初期ジョブを実行
 
 #### Step 3: Container Instance起動
-- Azure CLIでContainer Instance作成
-- vNet統合済サブネットに配置
-- ACRからRunnerイメージをプル（Private Endpoint経由、インターネット接続不要）
-- GitHub Runnerを自動起動・登録
+**実行内容**:
+1. Azure CLI で Container Instance を動的作成
+2. ACRからRunnerイメージをプル（Private Endpoint経由、完全閉域）
+3. vNet統合Subnet (`snet-container-instances`) に配置
+4. 環境変数でGitHubリポジトリ情報を渡す
+5. 起動スクリプトがGitHub Runnerを自動登録
+
+**セキュリティポイント**:
+- vNet内部からのみアクセス可能
+- NSGで通信を制限
+- インターネット接続は最小限（GitHub API通信のみHTTPS 443）
 
 #### Step 4: シークレット取得
-- Container InstanceからKey Vaultへアクセス（Private Endpoint経由）
-- デプロイに必要な認証情報を取得
-- 環境変数として設定
+**実行内容**:
+1. Container Instance の Managed Identity で Key Vault に認証
+2. Azure認証情報（OIDC用: CLIENT_ID, TENANT_ID, SUBSCRIPTION_ID）を取得
+3. 必要に応じてPublish Profile等を取得
+4. 環境変数として設定
+
+**認証方式の違い**:
+
+| 項目 | OIDC認証（推奨） | Client Secret方式 |
+|------|-----------------|------------------|
+| **シークレット数** | 3個（ID系のみ） | 4個（パスワード含む） |
+| **セキュリティ** | ✅ 高（一時トークン） | ⚠️ 中（長期パスワード） |
+| **管理負担** | ✅ 低（ローテーション不要） | ⚠️ 高（定期ローテーション） |
+| **推奨度** | ✅ 本番環境推奨 | △ テスト環境のみ |
 
 #### Step 5: ビルド・デプロイ
-- アプリケーションのビルド
-- Web Appsへのデプロイ（vNet経由）
-- デプロイ完了確認
+**実行内容**:
+1. アプリケーションコードのチェックアウト
+2. 依存関係のインストール（npm, pip等）
+3. アプリケーションのビルド
+4. Web Apps / Azure Functions へデプロイ（vNet経由）
+5. デプロイ結果の確認
+
+**通信経路**: すべてvNet内部で完結（Private Endpoint経由）
 
 #### Step 6: クリーンアップ
-- ジョブ完了後、Container Instanceを削除
-- コスト最適化
+**実行内容**:
+1. GitHub API経由でSelf-hosted Runnerの登録解除
+2. Azure CLI で Container Instance を削除
+3. リソース削除の確認
+
+**コスト最適化**:
+- Container Instanceは使用時のみ課金
+- ジョブ完了後即座に削除で無駄なコスト削減
 
 ## コンポーネント詳細
 

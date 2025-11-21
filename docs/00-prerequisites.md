@@ -305,35 +305,9 @@ Write-Host "`n=== Private DNS Zones ===" -ForegroundColor Green
 az network private-dns zone list --resource-group $RESOURCE_GROUP --query "[].name" --output table
 ```
 
-### 2. ACR ファイアウォール設定
+> **⚠️ 重要**: NAT Gateway の Public IP を ACR のネットワークルールに追加する手順は、**Step 01 (ACR構築) 完了後**に実施してください。詳細は [デプロイガイド - Step 01](deployment-guide.md#step-01-azure-container-registryの構築) を参照してください。
 
-NAT Gateway の Public IP を ACR のネットワークルールに追加します:
-
-```powershell
-# NAT Gateway の Public IP を取得
-$NAT_IP = az deployment group show `
-  --resource-group $RESOURCE_GROUP `
-  --name step01-networking `
-  --query properties.outputs.natGatewayPublicIp.value `
-  --output tsv
-
-echo "NAT Gateway Public IP: $NAT_IP"
-
-# ACR 名を設定（Step 01 デプロイ後に取得）
-$ACR_NAME = "acrinternalragdev"  # 環境に応じて変更
-
-# ACR のネットワークルールに追加
-az acr network-rule add `
-  --name $ACR_NAME `
-  --ip-address $NAT_IP
-
-# 確認
-az acr network-rule list --name $ACR_NAME
-```
-
-> **Note**: この設定により、ACR Tasks が NAT Gateway 経由で ACR にアクセス可能になり、パブリックアクセスの一時的な有効化が不要になります。
-
-### 3. GitHub PAT作成
+### 2. GitHub PAT作成
 
 1. https://github.com/settings/tokens にアクセス
 2. "Generate new token (classic)" をクリック
@@ -343,7 +317,7 @@ az acr network-rule list --name $ACR_NAME
    - `admin:org` (Organization使用時)
 4. トークンをコピーして安全に保管
 
-### 4. Azure サービスプリンシパル作成
+### 3. Azure サービスプリンシパル作成
 
 Web Appsデプロイ用のサービスプリンシパルを作成します。
 
@@ -364,7 +338,7 @@ $SP_OUTPUT = az ad sp create-for-rbac `
   --scopes /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP `
   | ConvertFrom-Json
 
-# 出力された値を変数に保存（Step 02で使用）
+# 出力された値を変数に保存（Step 03で使用）
 $CLIENT_ID = $SP_OUTPUT.appId
 $CLIENT_SECRET = $SP_OUTPUT.password
 $TENANT_ID = $SP_OUTPUT.tenant
@@ -376,7 +350,7 @@ Write-Host "SUBSCRIPTION_ID: $SUBSCRIPTION_ID"
 Write-Host "CLIENT_SECRET: (保存済み - 表示されません)"
 ```
 
-> **💡 ヒント**: これらの変数は同じPowerShellセッションで保持されます。Step 02のシークレット設定で使用します。
+> **💡 ヒント**: これらの変数は同じPowerShellセッションで保持されます。Step 03のシークレット設定で使用します。
 
 **出力例**:
 ```json
@@ -491,7 +465,7 @@ Write-Host "AI Search Managed Identity configured successfully" -ForegroundColor
 > **⚠️ 重要**: 
 > - 出力された`appId`(Client ID)、`password`(Client Secret)、`tenant`(Tenant ID)、`subscriptionId`を安全に保管してください
 > - `password`は一度しか表示されません。必ずコピーしてください
-> - Step 02でこれらの4つの値をKey Vaultに格納します
+> - Step 03でこれらの4つの値をKey Vaultに格納します
 
 ## トラブルシューティング
 
