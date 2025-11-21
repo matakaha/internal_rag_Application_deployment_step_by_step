@@ -52,7 +52,9 @@ Runner起動・ジョブ実行
 ## 前提条件
 
 - [internal_rag_step_by_step](https://github.com/matakaha/internal_rag_step_by_step) Step 01が完了していること
-- Virtual Network `vnet-internal-rag-<環境名>` が存在すること
+  - Virtual Network `vnet-internal-rag-<環境名>` が存在すること
+  - **NAT Gateway が Step 01 に統合されていること**
+  - **ACR ファイアウォールに NAT Gateway の Public IP が追加されていること**
 - Azure CLI がインストールされていること
 
 確認方法:
@@ -167,10 +169,9 @@ Result
 **手順**:
 
 ```powershell
-# 1. パブリックアクセスとネットワークルールを一時的に許可（ACR Tasksに必要）
-az acr update --name $ACR_NAME --public-network-enabled true --default-action Allow
-
-# 2. ACR上で直接ビルドとプッシュを実行
+# ACR Tasks でビルドとプッシュを実行
+# NAT Gateway の Public IP が ACR ファイアウォールに追加済みのため、
+# パブリックアクセスの有効化は不要
 az acr build `
   --registry $ACR_NAME `
   --image github-runner:latest `
@@ -178,15 +179,14 @@ az acr build `
   --file Dockerfile `
   .
 
-# 3. イメージ確認（パブリックアクセス有効中に実施）
+# イメージ確認
 az acr repository show-tags `
   --name $ACR_NAME `
   --repository github-runner `
   --output table
-
-# 4. パブリックアクセスとネットワークルールを無効化（セキュリティ強化）
-az acr update --name $ACR_NAME --public-network-enabled false --default-action Deny
 ```
+
+> **Note**: NAT Gateway の Public IP が ACR のネットワークルールに追加されているため、ACR Tasks は閉域環境からでも実行可能です。パブリックアクセスの一時的な有効化は不要です。
 
 **所要時間**: 約3-5分
 
@@ -200,7 +200,7 @@ az acr update --name $ACR_NAME --public-network-enabled false --default-action D
 3. ビルドしたイメージをACRに自動プッシュ
 4. ビルドログをリアルタイムで表示
 
-> **⚠️ 注意**: ACR TasksのビルドエージェントはパブリックIPアドレスから接続するため、ビルド中は一時的に`publicNetworkAccess: Enabled`と`networkRuleSet.defaultAction: Allow`が必要です。ビルド完了後は必ず両方とも元の設定に戻してください。
+> **Note**: NAT Gateway の導入により、ACR Tasks のビルドエージェントは NAT Gateway の Public IP 経由で ACR にアクセスします。ACR のネットワークルールに NAT Gateway の Public IP が追加されていれば、ACR のパブリックアクセスを有効化することなく、完全な閉域環境でビルドが可能です。
 
 </details>
 
@@ -334,22 +334,14 @@ az acr update --name $ACR_NAME --public-network-enabled false
 
 ### 6. イメージの確認
 
-> **⚠️ 注意**: パブリックアクセス無効化後は、ローカルからのイメージ確認はできません。上記手順の「3. イメージ確認」で実施済みであることを確認してください。
-
-パブリックアクセス無効化後に確認が必要な場合は、一時的に有効化してください:
+ACR 内のイメージを確認します:
 
 ```powershell
-# 一時的にパブリックアクセスを有効化
-az acr update --name $ACR_NAME --public-network-enabled true
-
 # ACR内のイメージ一覧を表示
 az acr repository list --name $ACR_NAME --output table
 
 # 特定リポジトリのタグ一覧を表示
 az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
-
-# 確認後、再度無効化
-az acr update --name $ACR_NAME --public-network-enabled false
 ```
 
 **期待される出力**:
@@ -358,7 +350,10 @@ Repository      Tag
 --------------  -------
 github-runner   latest
 github-runner   1.0.0
+node            18-alpine
 ```
+
+> **Note**: NAT Gateway 経由で ACR にアクセスしているため、`az acr repository` コマンドは常に実行可能です。
 
 ## 詳細解説
 
