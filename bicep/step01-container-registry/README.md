@@ -119,7 +119,38 @@ $ACR_NAME = az deployment group show `
 echo "ACR_NAME: $ACR_NAME"
 ```
 
-### 4. Runnerコンテナーイメージのビルド
+### 4. Web App用ベースイメージのインポート
+
+閉域環境でWeb App(フロントエンド)のコンテナイメージをビルドするため、Node.jsベースイメージを事前にACRにインポートします。
+
+```powershell
+# Node.js 18 Alpineイメージをインポート
+az acr import `
+  --name $ACR_NAME `
+  --source mcr.microsoft.com/mirror/docker/library/node:18-alpine `
+  --image node:18-alpine
+```
+
+**所要時間**: 約1-2分
+
+**確認**:
+```powershell
+az acr repository show-tags `
+  --name $ACR_NAME `
+  --repository node `
+  --output table
+```
+
+期待される出力:
+```
+Result
+--------
+18-alpine
+```
+
+> **Note**: このイメージはStep 04でWeb Appのコンテナ化デプロイに使用されます。
+
+### 5. Runnerコンテナーイメージのビルド
 
 2つの方法があります:
 
@@ -184,7 +215,7 @@ az acr update --name $ACR_NAME --public-network-enabled false --default-action D
 docker --version
 ```
 
-##### 4.1 Dockerfileの確認
+##### 5.1 Dockerfileの確認
 
 `Dockerfile` がこのディレクトリに既に用意されています:
 
@@ -227,7 +258,7 @@ ENTRYPOINT ["/actions-runner/start.sh"]
 - GitHub Actions Runner をインストール
 - 起動時に自動でRunnerを登録
 
-##### 4.2 起動スクリプトの確認
+##### 5.2 起動スクリプトの確認
 
 `start.sh` がこのディレクトリに既に用意されています:
 
@@ -265,7 +296,7 @@ REGISTRATION_TOKEN=$(curl -sX POST \
 ./run.sh
 ```
 
-##### 4.3 パブリックアクセスの一時的な有効化
+##### 5.3 パブリックアクセスの一時的な有効化
 
 > **⚠️ 注意**: ローカルからACRにプッシュする場合のみ必要です。
 
@@ -274,7 +305,7 @@ REGISTRATION_TOKEN=$(curl -sX POST \
 az acr update --name $ACR_NAME --public-network-enabled true
 ```
 
-##### 4.4 イメージのビルドとプッシュ
+##### 5.4 イメージのビルドとプッシュ
 
 ```powershell
 # ACRにログイン
@@ -301,7 +332,7 @@ az acr update --name $ACR_NAME --public-network-enabled false
 
 ---
 
-### 5. イメージの確認
+### 6. イメージの確認
 
 > **⚠️ 注意**: パブリックアクセス無効化後は、ローカルからのイメージ確認はできません。上記手順の「3. イメージ確認」で実施済みであることを確認してください。
 
