@@ -103,13 +103,9 @@ echo "ACR_NAME: $ACR_NAME"
 **推奨: ACR Tasksを使用(Docker不要)**
 
 ```powershell
-# 1. パブリックアクセスを一時的に有効化
-az acr update --name $ACR_NAME --public-network-enabled true
-
-# 2. ネットワークルールのデフォルトアクションをAllowに変更
-az acr update --name $ACR_NAME --default-action Allow
-
-# 3. ACR上で直接ビルドとプッシュを実行
+# ACR Tasks でビルドとプッシュを実行
+# NAT Gateway の Public IP が ACR ファイアウォールに追加済みのため、
+# パブリックアクセスの有効化は不要
 az acr build `
   --registry $ACR_NAME `
   --image github-runner:latest `
@@ -117,15 +113,11 @@ az acr build `
   --file Dockerfile `
   .
 
-# 4. イメージ確認
+# イメージ確認
 az acr repository show-tags --name $ACR_NAME --repository github-runner --output table
-
-# 5. ネットワークルールをDenyに戻す
-az acr update --name $ACR_NAME --default-action Deny
-
-# 6. パブリックアクセスを無効化
-az acr update --name $ACR_NAME --public-network-enabled false
 ```
+
+> **Note**: NAT Gateway の Public IP が ACR のネットワークルールに追加されているため、ACR Tasks は閉域環境からでも実行可能です。パブリックアクセスの一時的な有効化は不要です。
 
 <details>
 <summary>オプション: ローカルDockerでビルド（Docker Desktop必要）</summary>

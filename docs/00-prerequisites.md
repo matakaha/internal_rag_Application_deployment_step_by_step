@@ -13,6 +13,7 @@
 | リソース | 確認方法 |
 |---------|---------|
 | **Virtual Network** | `az network vnet show --resource-group <RG名> --name vnet-internal-rag-<環境名>` |
+| **NAT Gateway** | `az network nat gateway show --resource-group <RG名> --name natgw-internal-rag-<環境名>` |
 | **Subnets** | `az network vnet subnet list --resource-group <RG名> --vnet-name vnet-internal-rag-<環境名>` |
 | **Web Apps** | `az webapp show --resource-group <RG名> --name app-internal-rag-<環境名>` |
 | **Private DNS Zones** | `az network private-dns zone list --resource-group <RG名>` |
@@ -291,6 +292,9 @@ $ENV_NAME = "dev"
 Write-Host "=== Virtual Network ===" -ForegroundColor Green
 az network vnet show --resource-group $RESOURCE_GROUP --name "vnet-internal-rag-$ENV_NAME" --query name
 
+Write-Host "`n=== NAT Gateway ===" -ForegroundColor Green
+az network nat gateway show --resource-group $RESOURCE_GROUP --name "natgw-internal-rag-$ENV_NAME" --query "{Name:name, PublicIpAddress:publicIpAddresses[0].id}"
+
 Write-Host "`n=== Subnets ===" -ForegroundColor Green
 az network vnet subnet list --resource-group $RESOURCE_GROUP --vnet-name "vnet-internal-rag-$ENV_NAME" --query "[].{Name:name, AddressPrefix:addressPrefix}" --output table
 
@@ -301,7 +305,35 @@ Write-Host "`n=== Private DNS Zones ===" -ForegroundColor Green
 az network private-dns zone list --resource-group $RESOURCE_GROUP --query "[].name" --output table
 ```
 
-### 2. GitHub PAT作成
+### 2. ACR ファイアウォール設定
+
+NAT Gateway の Public IP を ACR のネットワークルールに追加します:
+
+```powershell
+# NAT Gateway の Public IP を取得
+$NAT_IP = az deployment group show `
+  --resource-group $RESOURCE_GROUP `
+  --name step01-networking `
+  --query properties.outputs.natGatewayPublicIp.value `
+  --output tsv
+
+echo "NAT Gateway Public IP: $NAT_IP"
+
+# ACR 名を設定（Step 01 デプロイ後に取得）
+$ACR_NAME = "acrinternalragdev"  # 環境に応じて変更
+
+# ACR のネットワークルールに追加
+az acr network-rule add `
+  --name $ACR_NAME `
+  --ip-address $NAT_IP
+
+# 確認
+az acr network-rule list --name $ACR_NAME
+```
+
+> **Note**: この設定により、ACR Tasks が NAT Gateway 経由で ACR にアクセス可能になり、パブリックアクセスの一時的な有効化が不要になります。
+
+### 3. GitHub PAT作成
 
 1. https://github.com/settings/tokens にアクセス
 2. "Generate new token (classic)" をクリック
@@ -311,7 +343,7 @@ az network private-dns zone list --resource-group $RESOURCE_GROUP --query "[].na
    - `admin:org` (Organization使用時)
 4. トークンをコピーして安全に保管
 
-### 3. Azure サービスプリンシパル作成
+### 4. Azure サービスプリンシパル作成
 
 Web Appsデプロイ用のサービスプリンシパルを作成します。
 
