@@ -299,14 +299,22 @@ Remove-Item publish-profile.xml
 [前提条件 - GitHub PAT作成](../../docs/00-prerequisites.md#2-github-pat作成)で取得したGitHub PATを格納します。
 
 ```powershell
-# GitHub PATを格納
+# GitHub PATを変数に設定（前提条件で取得した値を入力）
+$GITHUB_PAT = "<your-github-pat>"  # 例: "ghp_xxxxxxxxxxxxxxxxxxxx"
+
+# Key VaultにGitHub PATを格納
 az keyvault secret set `
   --vault-name $KEY_VAULT_NAME `
   --name "GITHUB-PAT" `
-  --value "<your-github-pat>"
+  --value $GITHUB_PAT
+
+Write-Host "GitHub PAT stored successfully in Key Vault" -ForegroundColor Green
 ```
 
-> **💡 ヒント**: GitHub PATは、前提条件のタスク2で作成したPersonal Access Tokenです。
+> **💡 ヒント**: 
+> - GitHub PATは、[前提条件のタスク2](../../docs/00-prerequisites.md#2-github-pat作成)で作成したPersonal Access Tokenです
+> - `$GITHUB_PAT` 変数に値を設定してから Key Vault に格納することで、後続の Step 04 でも同じ変数を利用できます
+> - PAT は `ghp_` で始まる形式です
 
 ### 4. Azure Container Registry (ACR) 認証情報の格納 (Step 01完了時)
 

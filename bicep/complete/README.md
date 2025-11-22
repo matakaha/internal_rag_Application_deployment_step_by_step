@@ -180,16 +180,50 @@ Bicepモジュールが自動的に依存関係を解決し、正しい順序で
 
 デプロイが完了したら:
 
-### 1. GitHub Secretsの設定
+### 1. GitHub Personal Access Token (PAT) の設定
+
+まず、[前提条件 - GitHub PAT作成](../../docs/00-prerequisites.md#2-github-pat作成)で取得したGitHub PATをKey Vaultに格納します。
+
+```powershell
+# 環境変数の設定
+$KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
+
+# GitHub PATを変数に設定（前提条件で取得した値を入力）
+$GITHUB_PAT = "<your-github-pat>"  # 例: "ghp_xxxxxxxxxxxxxxxxxxxx"
+
+# Key VaultにGitHub PATを格納
+az keyvault secret set `
+  --vault-name $KEY_VAULT_NAME `
+  --name "GITHUB-PAT" `
+  --value $GITHUB_PAT
+
+Write-Host "GitHub PAT stored successfully in Key Vault" -ForegroundColor Green
+```
+
+> **💡 ヒント**: 
+> - GitHub PATは、[前提条件のタスク2](../../docs/00-prerequisites.md#2-github-pat作成)で作成したPersonal Access Tokenです
+> - `$GITHUB_PAT` 変数に値を設定することで、後続の Step 04 でも同じ変数を利用できます
+> - PAT は `ghp_` で始まる形式です
+
+### 2. GitHub Secretsの設定
 
 🔗 **[Step 04 - GitHub Secretsの設定](../step04-github-actions/README.md#2-github-secretsの設定)**
 
-Key Vaultから取得した値を使って、以下の3つのGitHub Secretsを設定します:
+Key Vaultから取得した値を使って、以下のGitHub Secretsを設定します:
+
+**OIDC認証方式 (推奨)**:
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_SUBSCRIPTION_ID`
+- `KEY_VAULT_NAME`
+- `GH_PAT`
+
+**Client Secret方式 (非推奨)**:
 - `AZURE_CREDENTIALS`
 - `KEY_VAULT_NAME`
 - `GH_PAT`
 
-### 2. アプリケーションのデプロイ
+### 3. アプリケーションのデプロイ
 
 以下の2つのオプションがあります:
 

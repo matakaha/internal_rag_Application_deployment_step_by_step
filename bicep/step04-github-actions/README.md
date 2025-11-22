@@ -113,6 +113,9 @@ gh auth login
 
 **Secretsの設定**:
 ```powershell
+# 環境変数の設定
+$KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
+
 # OIDC認証用の情報を設定
 # (前提条件「3. Azure サービスプリンシパルとFederated Credential作成」で取得した値を使用)
 
@@ -174,6 +177,9 @@ GitHub CLIをインストールしたくない場合は、以下の手順でWeb�
 **ステップ1: 必要な値を取得・表示**
 
 ```powershell
+# 環境変数の設定
+$KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
+
 # CLIENT_ID, TENANT_ID, SUBSCRIPTION_IDを表示
 # (前提条件で作成済みの変数を使用)
 Write-Host "\n=== AZURE_CLIENT_ID (以下をコピー) ===" -ForegroundColor Green
@@ -186,7 +192,6 @@ Write-Host "\n=== AZURE_SUBSCRIPTION_ID (以下をコピー) ===" -ForegroundCol
 Write-Host $SUBSCRIPTION_ID
 
 Write-Host "\n=== KEY_VAULT_NAME (以下をコピー) ===" -ForegroundColor Green
-$KEY_VAULT_NAME = "kv-gh-runner-dev"  # 環境に応じて変更
 Write-Host $KEY_VAULT_NAME
 
 # GitHub PATをKey Vaultから取得
